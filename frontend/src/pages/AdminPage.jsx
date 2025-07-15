@@ -160,9 +160,6 @@ export default function AdminPage() {
                     />
                   )}
                 </div>
-                <div className="text-xs text-glassyblue-500">
-                  Joined: {u.createdAt?.slice(0, 10)}
-                </div>
                 <div className="flex gap-2 mt-2">
                   {u.verified ? (
                     <span className="px-3 py-1 rounded-full bg-green-200 text-green-800 text-xs font-bold">
