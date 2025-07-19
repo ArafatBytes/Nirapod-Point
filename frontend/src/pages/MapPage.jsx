@@ -20,6 +20,8 @@ import {
 import CrimeReportForm from "../components/CrimeReportForm";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
+import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 
 const crimeTypeColors = {
   robbery: "red",
@@ -73,6 +75,10 @@ const MapPage = () => {
   const navigate = useNavigate();
   const { jwt } = useUser();
 
+  // Toast refs
+  const sourceToastId = useRef(null);
+  const destToastId = useRef(null);
+
   // Fetch real crimes on mount
   useEffect(() => {
     async function fetchCrimes() {
@@ -124,8 +130,27 @@ const MapPage = () => {
     if (selectingRoute) {
       if (routePoints.length === 0) {
         setRoutePoints([latlng]);
+        // Dismiss source toast, show destination toast
+        if (sourceToastId.current) toast.dismiss(sourceToastId.current);
+        destToastId.current = toast.custom(
+          (t) => (
+            <div
+              className="backdrop-blur-xl bg-white/40 border border-glassyblue-200/40 shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-3 text-glassyblue-800 font-semibold text-base animate-fade-in"
+              style={{
+                boxShadow: "0 8px 32px 0 rgba(31,38,135,0.18)",
+                minWidth: 320,
+              }}
+            >
+              <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
+              Click on the map to select{" "}
+              <span className="font-bold ml-1">destination</span> (red marker).
+            </div>
+          ),
+          { id: "dest-toast", duration: Infinity, position: "top-center" }
+        );
       } else if (routePoints.length === 1) {
         setRoutePoints([routePoints[0], latlng]);
+        if (destToastId.current) toast.dismiss(destToastId.current);
         setRouteLoading(true);
         setRouteError("");
         setRoute([]);
@@ -187,6 +212,25 @@ const MapPage = () => {
     setRoute([]);
     setRouteError("");
     setShowRouteInstruction(true);
+    // Show glassy toast for source selection
+    if (sourceToastId.current) toast.dismiss(sourceToastId.current);
+    if (destToastId.current) toast.dismiss(destToastId.current);
+    sourceToastId.current = toast.custom(
+      (t) => (
+        <div
+          className="backdrop-blur-xl bg-white/40 border border-glassyblue-200/40 shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-3 text-glassyblue-800 font-semibold text-base animate-fade-in"
+          style={{
+            boxShadow: "0 8px 32px 0 rgba(31,38,135,0.18)",
+            minWidth: 320,
+          }}
+        >
+          <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
+          Click on the map to select{" "}
+          <span className="font-bold ml-1">source</span> (green marker).
+        </div>
+      ),
+      { id: "source-toast", duration: Infinity, position: "top-center" }
+    );
   };
 
   const resetRouteSelection = () => {
@@ -200,6 +244,67 @@ const MapPage = () => {
 
   return (
     <div className="w-full h-screen flex flex-col bg-gray-100">
+      {/* Loading overlay for route calculation */}
+      {routeLoading && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/60 backdrop-blur-xl"
+          style={{ pointerEvents: "all" }}
+        >
+          <motion.div
+            className="rounded-2xl bg-white/40 shadow-xl p-8 flex flex-col items-center"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.4 }}
+          >
+            <motion.div
+              className="w-16 h-16 mb-4 flex items-center justify-center"
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+            >
+              <svg className="w-16 h-16" viewBox="0 0 50 50">
+                <circle
+                  className="text-glassyblue-400 opacity-30"
+                  cx="25"
+                  cy="25"
+                  r="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="6"
+                />
+                <motion.circle
+                  className="text-glassyblue-600"
+                  cx="25"
+                  cy="25"
+                  r="20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="6"
+                  strokeDasharray="100"
+                  strokeDashoffset="60"
+                  strokeLinecap="round"
+                  animate={{
+                    strokeDashoffset: [60, 0, 60],
+                  }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 1.2,
+                    ease: "easeInOut",
+                  }}
+                />
+              </svg>
+            </motion.div>
+            <div className="text-xl font-semibold text-glassyblue-700 mb-2">
+              Calculating safest route...
+            </div>
+            <div className="text-glassyblue-500 text-sm">
+              Please wait while we analyze all possible paths for you.
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
       <div
         className="flex flex-row items-center justify-between p-6 mt-20 mx-auto max-w-4xl rounded-2xl bg-white/30 backdrop-blur-md border border-glassyblue-200/40 shadow-2xl z-20 mb-2"
         style={{ boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.18)" }}
@@ -268,10 +373,13 @@ const MapPage = () => {
               color={networkType === "walk" ? "purple" : "green"}
             />
           )}
-          {/* Show source/destination markers while selecting */}
-          {selectingRoute && routePoints[0] && (
+          {/* Show source/destination markers while selecting or after route is shown */}
+          {(routePoints[0] || (route.length > 1 && routePoints[0])) && (
             <Marker
-              position={[routePoints[0].lat, routePoints[0].lng]}
+              position={[
+                routePoints[0]?.lat ?? route[0]?.lat,
+                routePoints[0]?.lng ?? route[0]?.lng,
+              ]}
               icon={
                 new L.Icon({
                   iconUrl:
@@ -282,9 +390,13 @@ const MapPage = () => {
               }
             />
           )}
-          {selectingRoute && routePoints[1] && (
+          {(routePoints[1] ||
+            (route.length > 1 && routePoints[route.length - 1])) && (
             <Marker
-              position={[routePoints[1].lat, routePoints[1].lng]}
+              position={[
+                routePoints[1]?.lat ?? route[route.length - 1]?.lat,
+                routePoints[1]?.lng ?? route[route.length - 1]?.lng,
+              ]}
               icon={
                 new L.Icon({
                   iconUrl:
@@ -344,38 +456,7 @@ const MapPage = () => {
           </div>
         )}
         {/* Floating instruction while selecting route */}
-        {showRouteInstruction && selectingRoute && (
-          <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-40 bg-blue-100 border border-blue-300 text-blue-900 px-6 py-2 rounded shadow-lg">
-            {routePoints.length === 0 &&
-              "Click on the map to select source (green marker)."}
-            {routePoints.length === 1 &&
-              "Click on the map to select destination (red marker)."}
-          </div>
-        )}
-      </div>
-      <div className="flex flex-row w-full bg-white shadow p-4">
-        <div className="w-1/2 h-48">
-          <h2 className="font-semibold mb-2">Crimes by Hour</h2>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={hourData.filter((h) => h.count > 0)}>
-              <XAxis dataKey="hour" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="count" fill="#8884d8" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="w-1/2 h-48">
-          <h2 className="font-semibold mb-2">Crimes by Day</h2>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={dayData.filter((d) => d.count > 0)}>
-              <XAxis dataKey="day" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="count" fill="#82ca9d" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {/* (Removed, replaced by hot toasts) */}
       </div>
     </div>
   );

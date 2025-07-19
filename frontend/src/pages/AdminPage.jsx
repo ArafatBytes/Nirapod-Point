@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useUser } from "../context/UserContext";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 
 const statusOptions = [
   { label: "All", value: "all" },
@@ -50,6 +51,19 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(await res.text());
       // Refresh users after action
       fetchUsers();
+      // Show toast
+      const user = users.find((u) => u.id === id);
+      if (approve) {
+        toast.success(
+          `Approved ${user?.name || "user"}'s account and sent email.`
+        );
+      } else {
+        toast.success(
+          `Disapproved ${
+            user?.name || "user"
+          }'s account, sent email, and deleted their crimes.`
+        );
+      }
     } catch (err) {
       setError(err.message || "Action failed");
     } finally {

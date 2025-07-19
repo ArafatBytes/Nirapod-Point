@@ -18,6 +18,8 @@ import AccountPage from "./pages/AccountPage";
 import AdminPage from "./pages/AdminPage";
 import MapPage from "./pages/MapPage";
 import ReportPage from "./pages/ReportPage";
+import HistoryPage from "./pages/HistoryPage";
+import RiskAnalysisPage from "./pages/RiskAnalysisPage";
 
 const features = [
   {
@@ -288,11 +290,8 @@ export default function App() {
             }
           />
           <Route path="/map" element={<MapPage />} />
-          <Route
-            path="/history"
-            element={<GlassyPage title="Report History" />}
-          />
-          <Route path="/risk" element={<GlassyPage title="Risk Analysis" />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/risk" element={<RiskAnalysisPage />} />
         </Routes>
       </Router>
     </UserProvider>
