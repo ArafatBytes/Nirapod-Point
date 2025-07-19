@@ -16,6 +16,8 @@ import { Toaster } from "react-hot-toast";
 import CrimeReportForm from "./components/CrimeReportForm";
 import AccountPage from "./pages/AccountPage";
 import AdminPage from "./pages/AdminPage";
+import MapPage from "./pages/MapPage";
+import ReportPage from "./pages/ReportPage";
 
 const features = [
   {
@@ -281,11 +283,11 @@ export default function App() {
             path="/report"
             element={
               <ProtectedRoute>
-                <CrimeReportForm />
+                <ReportPage />
               </ProtectedRoute>
             }
           />
-          <Route path="/map" element={<GlassyPage title="Crime Map" />} />
+          <Route path="/map" element={<MapPage />} />
           <Route
             path="/history"
             element={<GlassyPage title="Report History" />}

@@ -2,17 +2,38 @@ import React from "react";
 import { motion } from "framer-motion";
 import { AnimatedBackground } from "../App";
 import { useUser } from "../context/UserContext";
+import { useLocation } from "react-router-dom";
 
-function CrimeReportForm() {
+function CrimeReportForm({ lat: propLat, lng: propLng, onSuccess, onCancel }) {
+  const location = useLocation();
+  // Prefer props, then location.state, then blank
+  const [lat, setLat] = React.useState(
+    propLat || (location.state && location.state.lat) || ""
+  );
+  const [lng, setLng] = React.useState(
+    propLng || (location.state && location.state.lng) || ""
+  );
   const [type, setType] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [time, setTime] = React.useState("");
-  const [lat, setLat] = React.useState("");
-  const [lng, setLng] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [success, setSuccess] = React.useState("");
   const [error, setError] = React.useState("");
   const { jwt } = useUser();
+
+  // If location.state changes (e.g. user navigates to /report with new coords), update state
+  React.useEffect(() => {
+    if (!propLat && location.state && location.state.lat)
+      setLat(location.state.lat);
+    if (!propLng && location.state && location.state.lng)
+      setLng(location.state.lng);
+  }, [location.state, propLat, propLng]);
+
+  // Update lat/lng state when props change (for map selection in report page)
+  React.useEffect(() => {
+    if (propLat) setLat(propLat);
+    if (propLng) setLng(propLng);
+  }, [propLat, propLng]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,8 +66,7 @@ function CrimeReportForm() {
       setType("");
       setDescription("");
       setTime("");
-      setLat("");
-      setLng("");
+      if (onSuccess) onSuccess();
     } catch (err) {
       setError(err.message || "Submission failed");
     } finally {
@@ -108,34 +128,30 @@ function CrimeReportForm() {
             className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
           />
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
-          <div className="flex-1 flex flex-col gap-2">
-            <label className="font-medium text-glassyblue-700">
-              Latitude<span className="text-red-500">*</span>
-            </label>
+        <div className="flex flex-col gap-2">
+          <label className="font-medium text-glassyblue-700">Location</label>
+          <div className="flex flex-row gap-2">
             <input
-              type="number"
-              value={lat}
-              onChange={(e) => setLat(e.target.value)}
-              className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
-              placeholder="23.8103"
-              step="any"
+              type="text"
+              value={lat || ""}
+              readOnly
+              className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 w-1/2"
+              placeholder="Latitude"
             />
-          </div>
-          <div className="flex-1 flex flex-col gap-2">
-            <label className="font-medium text-glassyblue-700">
-              Longitude<span className="text-red-500">*</span>
-            </label>
             <input
-              type="number"
-              value={lng}
-              onChange={(e) => setLng(e.target.value)}
-              className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
-              placeholder="90.4125"
-              step="any"
+              type="text"
+              value={lng || ""}
+              readOnly
+              className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 w-1/2"
+              placeholder="Longitude"
             />
           </div>
         </div>
+        {!lat || !lng ? (
+          <div className="text-red-500 text-center font-medium">
+            Please select a location on the map to report a crime.
+          </div>
+        ) : null}
         {error && (
           <div className="text-red-500 text-center font-medium">{error}</div>
         )}
@@ -144,15 +160,28 @@ function CrimeReportForm() {
             {success}
           </div>
         )}
-        <motion.button
-          type="submit"
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.97 }}
-          disabled={loading}
-          className="mt-2 px-8 py-3 rounded-full bg-glassyblue-500 text-black font-semibold shadow-lg hover:bg-glassyblue-600 transition-colors duration-200 backdrop-blur-md border border-white/20 disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {loading ? "Submitting..." : "Submit Report"}
-        </motion.button>
+        <div className="flex flex-row gap-4 justify-center">
+          <motion.button
+            type="submit"
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            disabled={loading || !lat || !lng}
+            className="mt-2 px-8 py-3 rounded-full bg-glassyblue-500 text-black font-semibold shadow-lg hover:bg-glassyblue-600 transition-colors duration-200 backdrop-blur-md border border-white/20 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {loading ? "Submitting..." : "Submit Report"}
+          </motion.button>
+          {onCancel && (
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={onCancel}
+              className="mt-2 px-8 py-3 rounded-full bg-gray-300 text-black font-semibold shadow-lg hover:bg-gray-400 transition-colors duration-200 backdrop-blur-md border border-white/20"
+            >
+              Cancel
+            </motion.button>
+          )}
+        </div>
       </motion.form>
     </div>
   );
