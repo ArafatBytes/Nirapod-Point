@@ -28,10 +28,11 @@ public class AuthController {
             @RequestParam String phone,
             @RequestParam String password,
             @RequestParam("nidFront") MultipartFile nidFront,
-            @RequestParam("nidBack") MultipartFile nidBack
+            @RequestParam("nidBack") MultipartFile nidBack,
+            @RequestParam("photo") String photo
     ) {
         try {
-            userService.registerUser(name, email, phone, password, nidFront, nidBack);
+            userService.registerUser(name, email, phone, password, nidFront, nidBack, photo);
             return ResponseEntity.status(HttpStatus.CREATED).body("Registration successful! Please wait for admin verification.");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -57,7 +58,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
         }
         // Exclude sensitive fields
-        return ResponseEntity.ok(new UserInfo(user.getId(), user.getName(), user.getEmail(), user.getPhone(), user.isVerified(), user.isAdmin(), user.getCreatedAt()));
+        return ResponseEntity.ok(new UserInfo(user.getId(), user.getName(), user.getEmail(), user.getPhone(), user.isVerified(), user.isAdmin(), user.getCreatedAt(), user.getPhoto()));
     }
 
     // --- Password Reset (OTP) ---
@@ -119,7 +120,8 @@ public class AuthController {
         private boolean isVerified;
         private boolean isAdmin;
         private java.time.LocalDateTime createdAt;
-        public UserInfo(String id, String name, String email, String phone, boolean isVerified, boolean isAdmin, java.time.LocalDateTime createdAt) {
+        private String photo;
+        public UserInfo(String id, String name, String email, String phone, boolean isVerified, boolean isAdmin, java.time.LocalDateTime createdAt, String photo) {
             this.id = id;
             this.name = name;
             this.email = email;
@@ -127,6 +129,7 @@ public class AuthController {
             this.isVerified = isVerified;
             this.isAdmin = isAdmin;
             this.createdAt = createdAt;
+            this.photo = photo;
         }
         public String getId() { return id; }
         public String getName() { return name; }
@@ -135,6 +138,7 @@ public class AuthController {
         public boolean isVerified() { return isVerified; }
         public boolean isAdmin() { return isAdmin; }
         public java.time.LocalDateTime getCreatedAt() { return createdAt; }
+        public String getPhoto() { return photo; }
     }
 
     public static class ResetRequest {

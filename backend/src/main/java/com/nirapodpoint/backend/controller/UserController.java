@@ -85,10 +85,11 @@ public class UserController {
     public ResponseEntity<?> updateOwnInfo(@AuthenticationPrincipal User user,
                                            @RequestBody User update) {
         if (user == null) return ResponseEntity.status(401).body("Unauthorized");
-        // Only allow updating name, email, phone for now
+        // Only update fields that are present (not null) in the request
         if (update.getName() != null) user.setName(update.getName());
         if (update.getEmail() != null) user.setEmail(update.getEmail());
         if (update.getPhone() != null) user.setPhone(update.getPhone());
+        if (update.getPhoto() != null && !update.getPhoto().isEmpty()) user.setPhoto(update.getPhoto());
         userRepository.save(user);
         return ResponseEntity.ok(user);
     }

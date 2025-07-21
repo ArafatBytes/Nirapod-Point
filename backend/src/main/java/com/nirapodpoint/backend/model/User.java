@@ -16,6 +16,7 @@ public class User {
     private String password; // hashed
     private String nidFront; // base64
     private String nidBack;  // base64
+    private String photo;    // base64 real-time photo
     private boolean isVerified = false;
     private boolean isAdmin = false;
     private LocalDateTime createdAt = LocalDateTime.now();

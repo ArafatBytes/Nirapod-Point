@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { useUser } from "../context/UserContext";
 import { useNavigate } from "react-router-dom";
@@ -15,14 +15,57 @@ function RegisterPage() {
     password: "",
     nidFront: null,
     nidBack: null,
+    photo: null,
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
+  // Webcam logic
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = useRef();
+  const canvasRef = useRef();
+  const [photoPreview, setPhotoPreview] = useState(null);
+
+  const startCamera = async () => {
+    setShowCamera(true);
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    }
+  };
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (video && canvas) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/png");
+      setForm((f) => ({ ...f, photo: dataUrl }));
+      setPhotoPreview(dataUrl);
+      setShowCamera(false);
+      // Stop camera
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach((track) => track.stop());
+      }
+    }
+  };
+  const cancelCamera = () => {
+    setShowCamera(false);
+    if (videoRef.current && videoRef.current.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+    }
+  };
 
   function validate() {
     const errs = {};
     if (!form.name) errs.name = "Name is required";
     if (!form.email) errs.email = "Email is required";
+    else if (!form.email.includes("@")) errs.email = "Invalid email";
     if (!form.phone) errs.phone = "Phone is required";
     else if (!bdPhoneRegex.test(form.phone))
       errs.phone = "Invalid BD phone number";
@@ -30,6 +73,7 @@ function RegisterPage() {
       errs.password = "Password must be at least 6 characters";
     if (!form.nidFront) errs.nidFront = "NID front image required";
     if (!form.nidBack) errs.nidBack = "NID back image required";
+    if (!form.photo) errs.photo = "Real-time photo required";
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }
@@ -158,6 +202,77 @@ function RegisterPage() {
             <span className="text-red-500 text-sm">{errors.nidBack}</span>
           )}
         </div>
+        <div className="flex flex-col gap-2">
+          <label className="font-medium text-glassyblue-700">
+            Your Image <span className="text-red-500">*</span>
+          </label>
+          {photoPreview ? (
+            <div className="flex flex-col items-center gap-2">
+              <img
+                src={photoPreview}
+                alt="Preview"
+                style={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: 12,
+                  objectFit: "cover",
+                  boxShadow: "0 2px 12px #0002",
+                }}
+              />
+              <button
+                type="button"
+                onClick={startCamera}
+                className="rounded-lg bg-glassyblue-500 text-black px-4 py-2 mt-1 shadow hover:bg-glassyblue-600 transition"
+              >
+                Retake Photo
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={startCamera}
+              className="rounded-lg bg-glassyblue-500 text-black px-4 py-2 shadow hover:bg-glassyblue-600 transition"
+            >
+              Take Photo
+            </button>
+          )}
+          {errors.photo && (
+            <span className="text-red-500 text-sm">{errors.photo}</span>
+          )}
+        </div>
+        {showCamera && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div className="bg-white/90 rounded-2xl p-6 flex flex-col items-center gap-4 shadow-xl">
+              <video
+                ref={videoRef}
+                style={{
+                  width: 320,
+                  height: 240,
+                  borderRadius: 12,
+                  background: "#222",
+                }}
+                autoPlay
+              />
+              <canvas ref={canvasRef} style={{ display: "none" }} />
+              <div className="flex gap-4 mt-2">
+                <button
+                  type="button"
+                  onClick={capturePhoto}
+                  className="rounded-lg bg-green-500 text-white px-4 py-2 shadow hover:bg-green-600 transition"
+                >
+                  Capture
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelCamera}
+                  className="rounded-lg bg-red-500 text-white px-4 py-2 shadow hover:bg-red-600 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <motion.button
           type="submit"
           whileHover={{ scale: 1.04 }}

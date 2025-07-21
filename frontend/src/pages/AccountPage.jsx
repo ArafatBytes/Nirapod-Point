@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useUser } from "../context/UserContext";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -15,6 +15,12 @@ export default function AccountPage() {
   const [pwLoading, setPwLoading] = useState(false);
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState("");
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = useRef();
+  const canvasRef = useRef();
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoHover, setPhotoHover] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -55,6 +61,61 @@ export default function AccountPage() {
     }
   };
 
+  const startCamera = async () => {
+    setShowCamera(true);
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    }
+  };
+
+  const capturePhoto = async () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (video && canvas) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/png");
+      setPhotoPreview(dataUrl);
+      setShowCamera(false);
+      setPhotoLoading(true);
+      // Update photo in backend
+      try {
+        const res = await fetch("/api/users/me", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+          },
+          body: JSON.stringify({ photo: dataUrl }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        toast.success("Photo updated!");
+        refreshUser && refreshUser();
+      } catch (err) {
+        toast.error("Failed to update photo");
+      } finally {
+        setPhotoLoading(false);
+      }
+      // Stop camera
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach((track) => track.stop());
+      }
+    }
+  };
+
+  const cancelCamera = () => {
+    setShowCamera(false);
+    if (videoRef.current && videoRef.current.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+    }
+  };
+
   if (!user) return <div className="pt-24 text-center">Loading...</div>;
 
   return (
@@ -67,6 +128,104 @@ export default function AccountPage() {
         className="backdrop-blur-xl bg-white/30 border border-glassyblue-200/40 shadow-2xl rounded-3xl p-8 max-w-lg w-full mx-4 flex flex-col gap-4 mt-8"
         style={{ boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.18)" }}
       >
+        <div className="flex flex-col items-center gap-2 mb-2">
+          <div
+            style={{ position: "relative", width: 96, height: 96 }}
+            onMouseEnter={() => setPhotoHover(true)}
+            onMouseLeave={() => setPhotoHover(false)}
+            tabIndex={0}
+            onFocus={() => setPhotoHover(true)}
+            onBlur={() => setPhotoHover(false)}
+          >
+            {photoPreview || user.photo ? (
+              <img
+                src={photoPreview || user.photo}
+                alt="User Photo"
+                className="w-24 h-24 object-cover rounded-full border-2 border-glassyblue-300 shadow bg-white/60 mb-1"
+                style={{ boxShadow: "0 2px 12px #0002", width: 96, height: 96 }}
+              />
+            ) : (
+              <div
+                className="w-24 h-24 rounded-full bg-gradient-to-br from-glassyblue-200 to-glassyblue-400 flex items-center justify-center text-3xl font-bold text-white mb-1"
+                style={{ width: 96, height: 96 }}
+              >
+                {user.name?.[0] || "U"}
+              </div>
+            )}
+            {/* Edit overlay on hover */}
+            <div
+              onClick={startCamera}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: 96,
+                height: 96,
+                borderRadius: "50%",
+                background: "rgba(30,41,59,0.18)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#2563eb",
+                fontWeight: 700,
+                fontSize: 22,
+                cursor: photoLoading ? "not-allowed" : "pointer",
+                opacity: photoHover ? 1 : 0,
+                transition: "opacity 0.2s",
+                zIndex: 2,
+              }}
+              title={photoLoading ? "Updating..." : "Edit Photo"}
+            >
+              <svg
+                width="32"
+                height="32"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 112.828 2.828L11.828 15.828A2 2 0 019 17H7v-2a2 2 0 01.586-1.414z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+        {showCamera && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div className="bg-white/90 rounded-2xl p-6 flex flex-col items-center gap-4 shadow-xl">
+              <video
+                ref={videoRef}
+                style={{
+                  width: 320,
+                  height: 240,
+                  borderRadius: 12,
+                  background: "#222",
+                }}
+                autoPlay
+              />
+              <canvas ref={canvasRef} style={{ display: "none" }} />
+              <div className="flex gap-4 mt-2">
+                <button
+                  type="button"
+                  onClick={capturePhoto}
+                  className="rounded-lg bg-green-500 text-white px-4 py-2 shadow hover:bg-green-600 transition"
+                >
+                  Capture
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelCamera}
+                  className="rounded-lg bg-red-500 text-white px-4 py-2 shadow hover:bg-red-600 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <h2 className="text-2xl md:text-3xl font-bold text-glassyblue-700 mb-2 text-center">
           My Account
         </h2>
