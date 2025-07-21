@@ -45,21 +45,41 @@ const features = [
   },
 ];
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, context = "" }) {
   const { user, loading, refreshUser } = useUser();
   const location = useLocation();
   React.useEffect(() => {
     refreshUser && refreshUser();
-    // Only run on mount
-    // eslint-disable-next-line
   }, []);
-  // Debug log
-  console.log("ProtectedRoute user:", user);
-
   if (loading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
-  // Accept both boolean and string true
-  if (!(user.verified === true || user.verified === "true")) {
+  // Special case for admin page: only check isAdmin
+  if (context === "admin" && !(user.admin === true || user.admin === "true")) {
+    return <Navigate to="/" replace />;
+  }
+  // For all other protected pages except account, block unverified users
+  if (
+    context !== "account" &&
+    context !== "admin" &&
+    !(user.verified === true || user.verified === "true")
+  ) {
+    let message =
+      "Your account is pending admin verification. You cannot access this page until verified.";
+    if (context === "map")
+      message =
+        "Your account is pending admin verification. You cannot access the map until verified.";
+    if (context === "report")
+      message =
+        "Your account is pending admin verification. You cannot report crimes until verified.";
+    if (context === "history")
+      message =
+        "Your account is pending admin verification. You cannot view your history until verified.";
+    if (context === "risk")
+      message =
+        "Your account is pending admin verification. You cannot view risk analysis until verified.";
+    if (context === "debug")
+      message =
+        "Your account is pending admin verification. You cannot access the debug tools until verified.";
     return (
       <div className="relative min-h-screen bg-gradient-to-br from-glassyblue-100 via-white to-glassyblue-200 flex flex-col items-center justify-center pt-24 pb-12 px-2 overflow-x-hidden">
         <motion.div
@@ -72,10 +92,7 @@ function ProtectedRoute({ children }) {
           <h2 className="text-2xl md:text-3xl font-bold text-glassyblue-700 mb-2 text-center">
             Account Not Verified
           </h2>
-          <p className="text-glassyblue-600 text-center">
-            Your account is pending admin verification. You cannot report crimes
-            until verified.
-          </p>
+          <p className="text-glassyblue-600 text-center">{message}</p>
         </motion.div>
       </div>
     );
@@ -280,20 +297,62 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/account" element={<AccountPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute context="account">
+                <AccountPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute context="admin">
+                <AdminPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/report"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute context="report">
                 <ReportPage />
               </ProtectedRoute>
             }
           />
-          <Route path="/map" element={<MapPage />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/risk" element={<RiskAnalysisPage />} />
-          <Route path="/debug-crime-route" element={<DebugCrimeRouteDemo />} />
+          <Route
+            path="/map"
+            element={
+              <ProtectedRoute context="map">
+                <MapPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <ProtectedRoute context="history">
+                <HistoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/risk"
+            element={
+              <ProtectedRoute context="risk">
+                <RiskAnalysisPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/debug-crime-route"
+            element={
+              <ProtectedRoute context="debug">
+                <DebugCrimeRouteDemo />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </Router>
     </UserProvider>

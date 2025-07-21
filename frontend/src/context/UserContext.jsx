@@ -79,7 +79,10 @@ export function UserProvider({ children }) {
         body: formData,
       });
       if (!res.ok) throw new Error(await res.text());
-      toast.success("Registration successful!");
+      toast.success(
+        "Registration successful! Your account is under verification. Once it's verified by the admin team, you will receive an email and can enjoy all the features of Nirapod Point.",
+        { duration: 9000 }
+      );
       return true;
     } catch (err) {
       toast.error(err.message || "Registration failed");

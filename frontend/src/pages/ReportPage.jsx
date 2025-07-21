@@ -4,10 +4,24 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import CrimeReportForm from "../components/CrimeReportForm";
 import PhotonSearchBar from "../components/PhotonSearchBar";
+import toast from "react-hot-toast";
+import { isInBangladeshPolygon } from "../utils/bangladeshPolygon";
+
+// Bangladesh bounding box
+const BD_BOUNDS = {
+  minLat: 20.59,
+  maxLat: 26.63,
+  minLng: 88.01,
+  maxLng: 92.68,
+};
 
 function LocationPicker({ onSelect, selectedLatLng }) {
   useMapEvents({
     click(e) {
+      if (!isInBangladeshPolygon(e.latlng.lat, e.latlng.lng)) {
+        toast.error("Please select a location within Bangladesh.");
+        return;
+      }
       onSelect(e.latlng);
     },
   });

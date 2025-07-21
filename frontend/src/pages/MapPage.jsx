@@ -23,6 +23,7 @@ import { useUser } from "../context/UserContext";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import PhotonSearchBar from "../components/PhotonSearchBar";
+import { isInBangladeshPolygon } from "../utils/bangladeshPolygon";
 
 const crimeTypeColors = {
   robbery: "red",
@@ -54,6 +55,10 @@ const getCrimeIcon = (type) => {
 function LocationMarker({ onSelect }) {
   useMapEvents({
     click(e) {
+      if (!isInBangladeshPolygon(e.latlng.lat, e.latlng.lng)) {
+        toast.error("Please select a location within Bangladesh.");
+        return;
+      }
       onSelect(e.latlng);
     },
   });
@@ -130,6 +135,10 @@ const MapPage = () => {
 
   // Handle map click for reporting or route selection
   const handleMapClick = async (latlng) => {
+    if (!isInBangladeshPolygon(latlng.lat, latlng.lng)) {
+      toast.error("Please select a location within Bangladesh.");
+      return;
+    }
     if (selectingRoute) {
       if (routePoints.length === 0) {
         setRoutePoints([latlng]);

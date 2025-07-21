@@ -11,6 +11,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import java.util.HashMap;
+import java.util.Map;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -56,28 +62,82 @@ public class UserController {
         if (user == null) return ResponseEntity.notFound().build();
         boolean wasUnverified = !user.isVerified();
         boolean wasVerified = user.isVerified();
-        user.setVerified(approve);
-        userRepository.save(user);
-        // Only send email if approving and user was previously unverified
-        if (approve && wasUnverified) {
-            try {
-                mailService.sendVerificationApprovedEmail(user.getEmail(), user.getName());
-            } catch (MessagingException e) {
-                // Log error, but don't fail the request
-                e.printStackTrace();
+
+        // Automated face verification if approving
+        if (approve) {
+            // Check for required images
+            if (user.getNidFront() == null || user.getPhoto() == null) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "verified", false,
+                    "message", "NID front or real-time photo missing. Cannot verify user."
+                ));
             }
-        }
-        // Send disapproval email if disapproving and user was previously verified
-        if (!approve && wasVerified) {
             try {
-                mailService.sendVerificationDisapprovedEmail(user.getEmail(), user.getName());
-            } catch (MessagingException e) {
-                e.printStackTrace();
+                // Call Python service
+                RestTemplate restTemplate = new RestTemplate();
+                String pythonUrl = "http://localhost:5001/verify";
+                Map<String, String> req = new HashMap<>();
+                req.put("nid", user.getNidFront().startsWith("data:") ? user.getNidFront() : "data:image/jpeg;base64," + user.getNidFront());
+                req.put("selfie", user.getPhoto().startsWith("data:") ? user.getPhoto() : "data:image/png;base64," + user.getPhoto());
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<Map<String, String>> entity = new HttpEntity<>(req, headers);
+                Map resp = restTemplate.postForObject(pythonUrl, entity, Map.class);
+                boolean verified = Boolean.TRUE.equals(resp.get("verified"));
+                double confidence = resp.get("confidence") != null ? Double.parseDouble(resp.get("confidence").toString()) : 0.0;
+                if (!verified) {
+                    return ResponseEntity.ok(Map.of(
+                        "verified", false,
+                        "message", "Face verification failed. User not verified.",
+                        "confidence", confidence
+                    ));
+                }
+                if (confidence < 0.40) {
+                    return ResponseEntity.ok(Map.of(
+                        "verified", false,
+                        "message", String.format("Low confidence (%.2f). User not verified.", confidence),
+                        "confidence", confidence
+                    ));
+                }
+                // Passed verification
+                user.setVerified(true);
+                userRepository.save(user);
+                if (wasUnverified) {
+                    try {
+                        mailService.sendVerificationApprovedEmail(user.getEmail(), user.getName());
+                    } catch (MessagingException e) {
+                        e.printStackTrace();
+                    }
+                }
+                return ResponseEntity.ok(Map.of(
+                    "verified", true,
+                    "message", String.format("User verified! Confidence: %.2f", confidence),
+                    "confidence", confidence
+                ));
+            } catch (Exception e) {
+                return ResponseEntity.status(500).body(Map.of(
+                    "verified", false,
+                    "message", "Face verification service error: " + e.getMessage()
+                ));
             }
-            // Delete all crimes reported by this user
-            crimeReportRepository.deleteByReporter(user.getId());
+        } else {
+            // Manual disapproval
+            if (wasVerified) {
+                try {
+                    mailService.sendVerificationDisapprovedEmail(user.getEmail(), user.getName());
+                } catch (MessagingException e) {
+                    e.printStackTrace();
+                }
+                // Delete all crimes reported by this user
+                crimeReportRepository.deleteByReporter(user.getId());
+            }
+            user.setVerified(false);
+            userRepository.save(user);
+            return ResponseEntity.ok(Map.of(
+                "verified", false,
+                "message", "User disapproved."
+            ));
         }
-        return ResponseEntity.ok(user);
     }
 
     // User: Update own info
@@ -113,5 +173,19 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
+    }
+
+    // Admin: Delete user and all their crimes
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteUser(@AuthenticationPrincipal User admin, @PathVariable String id) {
+        if (admin == null || !admin.isAdmin()) {
+            return ResponseEntity.status(403).body("Forbidden: Admins only");
+        }
+        User user = userRepository.findById(id).orElse(null);
+        if (user == null) return ResponseEntity.status(404).body("User not found");
+        // Delete all crimes reported by this user
+        crimeReportRepository.deleteByReporter(user.getId());
+        userRepository.deleteById(id);
+        return ResponseEntity.ok(Map.of("deleted", true, "message", "User and their crimes deleted"));
     }
 } 
