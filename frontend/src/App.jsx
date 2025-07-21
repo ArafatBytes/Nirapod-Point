@@ -20,6 +20,7 @@ import MapPage from "./pages/MapPage";
 import ReportPage from "./pages/ReportPage";
 import HistoryPage from "./pages/HistoryPage";
 import RiskAnalysisPage from "./pages/RiskAnalysisPage";
+import DebugCrimeRouteDemo from "./pages/DebugCrimeRouteDemo";
 
 const features = [
   {
@@ -292,6 +293,7 @@ export default function App() {
           <Route path="/map" element={<MapPage />} />
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/risk" element={<RiskAnalysisPage />} />
+          <Route path="/debug-crime-route" element={<DebugCrimeRouteDemo />} />
         </Routes>
       </Router>
     </UserProvider>

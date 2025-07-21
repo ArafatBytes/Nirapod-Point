@@ -95,15 +95,12 @@ public class RouteService {
         Map<Long, Node> nodes = nodeCache.get(key);
         List<Edge> edges = edgeCache.get(key);
 
-        // 2. Filter crimes by ±3 hours of query time
-        LocalDateTime queryTime = LocalDateTime.now(); // TODO: get from request
-        LocalDateTime fromTime = queryTime.minusHours(3);
-        LocalDateTime toTime = queryTime.plusHours(3);
-        List<CrimeReport> crimes = crimeReportRepository.findAll().stream()
-                .filter(c -> c.getTime() != null &&
-                        !c.getTime().isBefore(fromTime) &&
-                        !c.getTime().isAfter(toTime))
-                .collect(Collectors.toList());
+        // 2. Fetch all crimes (ignore time filtering for testing)
+        // LocalDateTime queryTime = LocalDateTime.now(); // TODO: get from request
+        // LocalDateTime fromTime = queryTime.minusHours(3);
+        // LocalDateTime toTime = queryTime.plusHours(3);
+        List<CrimeReport> crimes = crimeReportRepository.findAll();
+        LocalDateTime queryTime = LocalDateTime.now(); // still needed for recency calculation
 
         // 3. Assign severity and recency, calculate crime score
         Map<CrimeReport, Double> crimeScores = new HashMap<>();
@@ -113,16 +110,22 @@ public class RouteService {
             crimeScores.put(crime, severity * recency);
         }
 
-        // 4. For each edge, sum crime scores within 50m and set edge length
+        // --- Stable crime-to-edge assignment: assign each crime to all nearby edges ---
+        // Reset all edge weights
         for (Edge edge : edges) {
-            double totalScore = 0;
-            for (CrimeReport crime : crimes) {
-                if (isCrimeNearEdge(crime, edge, 50)) {
-                    totalScore += crimeScores.get(crime);
+            edge.weight = 0;
+        }
+        // Assign each crime to all edges within buffer
+        for (CrimeReport crime : crimes) {
+            double crimeScore = crimeScores.get(crime);
+            for (Edge edge : edges) {
+                if (isCrimeNearEdge(crime, edge, 30)) {
+                    edge.weight += crimeScore;
                 }
             }
-            edge.weight = totalScore;
-            // Set edge.length from parsed graph or calculate if missing
+        }
+        // Set edge.length from parsed graph or calculate if missing
+        for (Edge edge : edges) {
             if (edgeLengthMap.containsKey(edge)) {
                 edge.length = edgeLengthMap.get(edge);
             } else if (edgeLengthFromParsed(edge) > 0) {
@@ -170,11 +173,50 @@ public class RouteService {
         return 1;
     }
     private boolean isCrimeNearEdge(CrimeReport crime, Edge edge, double bufferMeters) {
-        // Use simple distance to edge midpoint for now
-        double[] mid = edge.geometry.get(edge.geometry.size()/2);
-        double dist = haversine(crime.getLocation().getY(), crime.getLocation().getX(), mid[0], mid[1]);
-        return dist <= bufferMeters;
+        double crimeLat = crime.getLocation().getY();
+        double crimeLng = crime.getLocation().getX();
+        List<double[]> geom = edge.geometry;
+        double minDist = Double.MAX_VALUE;
+        for (int i = 1; i < geom.size(); i++) {
+            double[] p1 = geom.get(i-1);
+            double[] p2 = geom.get(i);
+            double dist = distancePointToSegment(crimeLat, crimeLng, p1[0], p1[1], p2[0], p2[1]);
+            if (dist < minDist) minDist = dist;
+        }
+        return minDist <= bufferMeters;
     }
+
+    // Returns the minimum distance (in meters) from point (lat, lng) to the segment (lat1, lng1)-(lat2, lng2)
+    private double distancePointToSegment(double lat, double lng, double lat1, double lng1, double lat2, double lng2) {
+        // Convert to radians
+        double phi = Math.toRadians(lat);
+        double lambda = Math.toRadians(lng);
+        double phi1 = Math.toRadians(lat1);
+        double lambda1 = Math.toRadians(lng1);
+        double phi2 = Math.toRadians(lat2);
+        double lambda2 = Math.toRadians(lng2);
+
+        // Convert to Cartesian coordinates (meters, equirectangular approximation)
+        double R = 6371000; // Earth radius in meters
+        double x = (lambda - lambda1) * Math.cos((phi1 + phi) / 2) * R;
+        double y = (phi - phi1) * R;
+        double x1 = 0;
+        double y1 = 0;
+        double x2 = (lambda2 - lambda1) * Math.cos((phi1 + phi2) / 2) * R;
+        double y2 = (phi2 - phi1) * R;
+
+        // Project point onto the segment
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+        double segLen2 = dx * dx + dy * dy;
+        double t = segLen2 == 0 ? 0 : ((x - x1) * dx + (y - y1) * dy) / segLen2;
+        t = Math.max(0, Math.min(1, t));
+        double projX = x1 + t * dx;
+        double projY = y1 + t * dy;
+        double dist = Math.sqrt((x - projX) * (x - projX) + (y - projY) * (y - projY));
+        return dist;
+    }
+
     private Node findNearestNode(double lat, double lng, Collection<Node> nodes) {
         Node nearest = null;
         double minDist = Double.MAX_VALUE;
@@ -190,8 +232,8 @@ public class RouteService {
 
     // --- A* Algorithm ---
     // α: weight for crime score, β: weight for distance (tunable)
-    private static final double ALPHA = 1.0; // prioritize safety
-    private static final double BETA = 0.001; // lower priority for distance
+    private static final double ALPHA = 10000.0; // strongly prioritize safety for testing
+    private static final double BETA = 0.00001; // lower priority for distance
 
     private List<Node> aStar(Node start, Node end) {
         Map<Node, Double> gScore = new HashMap<>(); // cost from start to node
@@ -269,5 +311,188 @@ public class RouteService {
                 Math.sin(dLon/2) * Math.sin(dLon/2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         return R * c;
+    }
+
+    // Debug result class for route and result
+    public static class EdgeWeightInfo {
+        public double fromLat, fromLng, toLat, toLng, weight;
+    }
+    public static class CrimeRouteDebugResult {
+        public boolean result;
+        public java.util.List<com.nirapodpoint.backend.model.RouteResponse.Coordinate> route;
+        public java.util.List<EdgeWeightInfo> edgeWeights;
+        public java.util.List<java.util.List<EdgeWeightInfo>> altPaths;
+        public java.util.List<Double> altPathScores;
+    }
+
+    // Helper to find up to maxPaths simple paths from start to end (DFS, no cycles)
+    private void findAllPaths(Node start, Node end, java.util.List<Node> currentPath, java.util.List<java.util.List<Node>> allPaths, java.util.Set<Node> visited, int maxPaths) {
+        if (allPaths.size() >= maxPaths) return;
+        if (start == end) {
+            allPaths.add(new java.util.ArrayList<>(currentPath));
+            return;
+        }
+        visited.add(start);
+        for (Edge edge : start.edges) {
+            Node neighbor = edge.to;
+            if (!visited.contains(neighbor)) {
+                currentPath.add(neighbor);
+                findAllPaths(neighbor, end, currentPath, allPaths, visited, maxPaths);
+                currentPath.remove(currentPath.size() - 1);
+            }
+        }
+        visited.remove(start);
+    }
+
+    public CrimeRouteDebugResult isCrimeOnRouteWithRoute(double crimeLat, double crimeLng, com.nirapodpoint.backend.model.RouteRequest request) {
+        String district = DistrictUtil.findDistrict(request.getStartLat(), request.getStartLng());
+        if (district == null) throw new RuntimeException("No district found for start point");
+        String networkType = request.getNetworkType();
+        try {
+            loadGraphIfNeeded(district, networkType);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load OSM graph: " + e.getMessage(), e);
+        }
+        String key = getGraphKey(district, networkType);
+        Map<Long, Node> nodes = nodeCache.get(key);
+        List<Edge> edges = edgeCache.get(key);
+
+        // Fetch all crimes from DB
+        List<CrimeReport> crimes = crimeReportRepository.findAll();
+        // Add synthetic crime
+        CrimeReport synthetic = new CrimeReport();
+        synthetic.setType("debug");
+        synthetic.setLocation(new org.springframework.data.mongodb.core.geo.GeoJsonPoint(crimeLng, crimeLat));
+        synthetic.setTime(java.time.LocalDateTime.now());
+        crimes.add(synthetic);
+
+        // Score edges as usual
+        Map<CrimeReport, Double> crimeScores = new HashMap<>();
+        for (CrimeReport crime : crimes) {
+            double severity = getSeverity(crime.getType());
+            double recency = getRecency(crime.getTime(), java.time.LocalDateTime.now());
+            crimeScores.put(crime, severity * recency);
+        }
+        for (Edge edge : edges) {
+            double totalScore = 0;
+            for (CrimeReport crime : crimes) {
+                if (isCrimeNearEdge(crime, edge, 50)) {
+                    totalScore += crimeScores.get(crime);
+                }
+            }
+            edge.weight = totalScore;
+            if (edgeLengthMap.containsKey(edge)) {
+                edge.length = edgeLengthMap.get(edge);
+            } else if (edgeLengthFromParsed(edge) > 0) {
+                edge.length = edgeLengthFromParsed(edge);
+            } else {
+                edge.length = calculateEdgeLength(edge);
+            }
+        }
+
+        // Find nearest nodes to start/end
+        Node start = findNearestNode(request.getStartLat(), request.getStartLng(), nodes.values());
+        Node end = findNearestNode(request.getEndLat(), request.getEndLng(), nodes.values());
+        if (start == null || end == null) throw new RuntimeException("No nearby road found");
+
+        // Find route
+        List<Node> path = aStar(start, end);
+
+        // Convert path to polyline
+        java.util.List<com.nirapodpoint.backend.model.RouteResponse.Coordinate> polyline = new java.util.ArrayList<>();
+        java.util.List<EdgeWeightInfo> edgeWeights = new java.util.ArrayList<>();
+        java.util.List<Edge> aStarEdges = new java.util.ArrayList<>();
+        for (int i = 0; i < path.size(); i++) {
+            Node n = path.get(i);
+            com.nirapodpoint.backend.model.RouteResponse.Coordinate c = new com.nirapodpoint.backend.model.RouteResponse.Coordinate();
+            c.setLat(n.lat);
+            c.setLng(n.lng);
+            polyline.add(c);
+            if (i > 0) {
+                Node from = path.get(i-1);
+                Node to = n;
+                for (Edge edge : from.edges) {
+                    if (edge.to == to) {
+                        EdgeWeightInfo info = new EdgeWeightInfo();
+                        info.fromLat = from.lat;
+                        info.fromLng = from.lng;
+                        info.toLat = to.lat;
+                        info.toLng = to.lng;
+                        info.weight = edge.weight;
+                        edgeWeights.add(info);
+                        aStarEdges.add(edge);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Find up to 3 alternative paths by blocking one edge at a time from the A* path
+        java.util.List<java.util.List<EdgeWeightInfo>> altPaths = new java.util.ArrayList<>();
+        java.util.List<Double> altPathScores = new java.util.ArrayList<>();
+        int altCount = 0;
+        for (int blockIdx = 0; blockIdx < aStarEdges.size() && altCount < 3; blockIdx++) {
+            Edge blockedEdge = aStarEdges.get(blockIdx);
+            // Temporarily remove the edge from the graph
+            blockedEdge.from.edges.remove(blockedEdge);
+            List<Node> altPath = aStar(start, end);
+            // Restore the edge
+            blockedEdge.from.edges.add(blockedEdge);
+            // Only add if the path is valid and different from the main path
+            if (altPath.size() > 1 && !altPath.equals(path)) {
+                java.util.List<EdgeWeightInfo> altEdgeWeights = new java.util.ArrayList<>();
+                double totalScore = 0.0;
+                for (int i = 1; i < altPath.size(); i++) {
+                    Node from = altPath.get(i-1);
+                    Node to = altPath.get(i);
+                    for (Edge edge : from.edges) {
+                        if (edge.to == to) {
+                            EdgeWeightInfo info = new EdgeWeightInfo();
+                            info.fromLat = from.lat;
+                            info.fromLng = from.lng;
+                            info.toLat = to.lat;
+                            info.toLng = to.lng;
+                            info.weight = edge.weight;
+                            altEdgeWeights.add(info);
+                            totalScore += edge.weight;
+                            break;
+                        }
+                    }
+                }
+                // Avoid duplicates
+                boolean isDuplicate = false;
+                for (java.util.List<EdgeWeightInfo> existing : altPaths) {
+                    if (existing.equals(altEdgeWeights)) { isDuplicate = true; break; }
+                }
+                if (!isDuplicate) {
+                    altPaths.add(altEdgeWeights);
+                    altPathScores.add(totalScore);
+                    altCount++;
+                }
+            }
+        }
+
+        // Check if any edge in the path is near the synthetic crime
+        boolean found = false;
+        for (int i = 1; i < path.size(); i++) {
+            Node from = path.get(i-1);
+            Node to = path.get(i);
+            for (Edge edge : from.edges) {
+                if (edge.to == to) {
+                    if (isCrimeNearEdge(synthetic, edge, 50)) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (found) break;
+        }
+        CrimeRouteDebugResult result = new CrimeRouteDebugResult();
+        result.result = found;
+        result.route = polyline;
+        result.edgeWeights = edgeWeights;
+        result.altPaths = altPaths;
+        result.altPathScores = altPathScores;
+        return result;
     }
 } 
