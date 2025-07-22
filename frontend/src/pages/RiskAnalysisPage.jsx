@@ -17,19 +17,25 @@ import {
 } from "recharts";
 
 const crimeTypeColors = {
-  robbery: "#ef4444",
-  assault: "#a21caf",
-  harassment: "#eab308",
-  theft: "#2563eb",
-  other: "#64748b",
+  murder: "#FF0000",
+  rape: "#FF1493",
+  kidnap: "#8A2BE2",
+  assault: "#FF8C00",
+  robbery: "#008080",
+  harassment: "#FFD700",
+  theft: "#00CED1",
+  others: "#808080",
 };
 
 const typeLabels = {
-  robbery: "Robbery",
-  assault: "Assault",
-  harassment: "Harassment",
-  theft: "Theft",
-  other: "Other",
+  Murder: "murder",
+  Rape: "rape",
+  Kidnap: "kidnap",
+  Assault: "assault",
+  Robbery: "robbery",
+  Harassment: "harassment",
+  Theft: "theft",
+  Others: "others",
 };
 
 export default function RiskAnalysisPage() {
@@ -132,11 +138,14 @@ export default function RiskAnalysisPage() {
                 className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
               >
                 <option value="all">All</option>
-                <option value="robbery">Robbery</option>
+                <option value="murder">Murder</option>
+                <option value="rape">Rape</option>
+                <option value="kidnap">Kidnap</option>
                 <option value="assault">Assault</option>
+                <option value="robbery">Robbery</option>
                 <option value="harassment">Harassment</option>
                 <option value="theft">Theft</option>
-                <option value="other">Other</option>
+                <option value="others">Others</option>
               </select>
             </div>
             <MapContainer

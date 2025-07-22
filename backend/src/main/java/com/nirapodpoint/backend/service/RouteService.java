@@ -157,8 +157,11 @@ public class RouteService {
     private double getSeverity(String type) {
         switch (type.toLowerCase()) {
             case "murder": return 10;
-            case "robbery": return 7;
-            case "harassment": return 6;
+            case "rape": return 9;
+            case "kidnap": return 8;
+            case "assault": return 7;
+            case "robbery": return 6;
+            case "harassment": return 5;
             case "theft": return 3;
             default: return 1;
         }

@@ -98,11 +98,14 @@ function CrimeReportForm({ lat: propLat, lng: propLng, onSuccess, onCancel }) {
             className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
           >
             <option value="">Select type</option>
-            <option value="Robbery">Robbery</option>
-            <option value="Assault">Assault</option>
-            <option value="Harassment">Harassment</option>
-            <option value="Theft">Theft</option>
-            <option value="Other">Other</option>
+            <option value="murder">Murder</option>
+            <option value="rape">Rape</option>
+            <option value="kidnap">Kidnap</option>
+            <option value="assault">Assault</option>
+            <option value="robbery">Robbery</option>
+            <option value="harassment">Harassment</option>
+            <option value="theft">Theft</option>
+            <option value="others">Others</option>
           </select>
         </div>
         <div className="flex flex-col gap-2">

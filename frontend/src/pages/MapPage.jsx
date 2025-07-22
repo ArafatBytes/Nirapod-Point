@@ -26,11 +26,14 @@ import PhotonSearchBar from "../components/PhotonSearchBar";
 import { isInBangladeshPolygon } from "../utils/bangladeshPolygon";
 
 const crimeTypeColors = {
-  robbery: "red",
-  assault: "purple",
-  harassment: "gold",
-  theft: "blue",
-  other: "gray",
+  murder: "#FF0000",
+  rape: "#FF1493",
+  kidnap: "#8A2BE2",
+  assault: "#FF8C00",
+  robbery: "#008080",
+  harassment: "#FFD700",
+  theft: "#00CED1",
+  others: "#808080",
 };
 
 // Custom icon for markers
@@ -391,11 +394,14 @@ const MapPage = () => {
                 }}
               >
                 <option value="all">All</option>
-                <option value="robbery">Robbery</option>
+                <option value="murder">Murder</option>
+                <option value="rape">Rape</option>
+                <option value="kidnap">Kidnap</option>
                 <option value="assault">Assault</option>
+                <option value="robbery">Robbery</option>
                 <option value="harassment">Harassment</option>
                 <option value="theft">Theft</option>
-                <option value="other">Other</option>
+                <option value="others">Others</option>
               </select>
             </div>
           </div>
@@ -621,7 +627,7 @@ const MapPage = () => {
                   cx="20"
                   cy="18"
                   r="14"
-                  fill="red"
+                  fill="#FF0000"
                   stroke="#fff"
                   strokeWidth="2"
                 />
@@ -635,7 +641,7 @@ const MapPage = () => {
                 />
               </svg>
             </span>
-            <span>Robbery</span>
+            <span>Murder</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ display: "inline-block", width: 22, height: 36 }}>
@@ -652,7 +658,69 @@ const MapPage = () => {
                   cx="20"
                   cy="18"
                   r="14"
-                  fill="purple"
+                  fill="#FF1493"
+                  stroke="#fff"
+                  strokeWidth="2"
+                />
+                <ellipse
+                  cx="15"
+                  cy="13"
+                  rx="5"
+                  ry="2.5"
+                  fill="white"
+                  opacity="0.5"
+                />
+              </svg>
+            </span>
+            <span>Rape</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ display: "inline-block", width: 22, height: 36 }}>
+              <svg width="22" height="36" viewBox="0 0 40 60">
+                <line
+                  x1="20"
+                  y1="24"
+                  x2="20"
+                  y2="58"
+                  stroke="#888"
+                  strokeWidth="2.5"
+                />
+                <circle
+                  cx="20"
+                  cy="18"
+                  r="14"
+                  fill="#8A2BE2"
+                  stroke="#fff"
+                  strokeWidth="2"
+                />
+                <ellipse
+                  cx="15"
+                  cy="13"
+                  rx="5"
+                  ry="2.5"
+                  fill="white"
+                  opacity="0.5"
+                />
+              </svg>
+            </span>
+            <span>Kidnap</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ display: "inline-block", width: 22, height: 36 }}>
+              <svg width="22" height="36" viewBox="0 0 40 60">
+                <line
+                  x1="20"
+                  y1="24"
+                  x2="20"
+                  y2="58"
+                  stroke="#888"
+                  strokeWidth="2.5"
+                />
+                <circle
+                  cx="20"
+                  cy="18"
+                  r="14"
+                  fill="#FF8C00"
                   stroke="#fff"
                   strokeWidth="2"
                 />
@@ -683,7 +751,38 @@ const MapPage = () => {
                   cx="20"
                   cy="18"
                   r="14"
-                  fill="gold"
+                  fill="#008080"
+                  stroke="#fff"
+                  strokeWidth="2"
+                />
+                <ellipse
+                  cx="15"
+                  cy="13"
+                  rx="5"
+                  ry="2.5"
+                  fill="white"
+                  opacity="0.5"
+                />
+              </svg>
+            </span>
+            <span>Robbery</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ display: "inline-block", width: 22, height: 36 }}>
+              <svg width="22" height="36" viewBox="0 0 40 60">
+                <line
+                  x1="20"
+                  y1="24"
+                  x2="20"
+                  y2="58"
+                  stroke="#888"
+                  strokeWidth="2.5"
+                />
+                <circle
+                  cx="20"
+                  cy="18"
+                  r="14"
+                  fill="#FFD700"
                   stroke="#fff"
                   strokeWidth="2"
                 />
@@ -714,7 +813,7 @@ const MapPage = () => {
                   cx="20"
                   cy="18"
                   r="14"
-                  fill="blue"
+                  fill="#00CED1"
                   stroke="#fff"
                   strokeWidth="2"
                 />
@@ -745,7 +844,7 @@ const MapPage = () => {
                   cx="20"
                   cy="18"
                   r="14"
-                  fill="gray"
+                  fill="#808080"
                   stroke="#fff"
                   strokeWidth="2"
                 />
@@ -759,7 +858,7 @@ const MapPage = () => {
                 />
               </svg>
             </span>
-            <span>Other</span>
+            <span>Others</span>
           </div>
           <div
             style={{
