@@ -71,6 +71,8 @@ function LocationMarker({ onSelect }) {
 const MapPage = () => {
   const [crimes, setCrimes] = useState([]);
   const [filter, setFilter] = useState("all");
+  const [loading, setLoading] = useState(false);
+  const [bounds, setBounds] = useState(null);
   const [selectedLatLng, setSelectedLatLng] = useState(null);
   const [route, setRoute] = useState([]); // Array of latlngs
   const [selectingRoute, setSelectingRoute] = useState(false);
@@ -90,122 +92,52 @@ const MapPage = () => {
   const sourceToastId = useRef(null);
   const destToastId = useRef(null);
 
-  // Fetch real crimes on mount
-  useEffect(() => {
-    async function fetchCrimes() {
-      try {
-        const res = await fetch("/api/crimes", {
+  // Function to fetch crimes within current map bounds
+  const fetchCrimesInBounds = async (bounds, type = filter) => {
+    if (!bounds) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `/api/crimes/bounds?minLat=${bounds._southWest.lat}&maxLat=${bounds._northEast.lat}&minLng=${bounds._southWest.lng}&maxLng=${bounds._northEast.lng}&type=${type}`,
+        {
           headers: { Authorization: jwt ? `Bearer ${jwt}` : undefined },
-        });
-        if (!res.ok) throw new Error("Failed to fetch crimes");
-        const data = await res.json();
-        // Transform crimes to add lat/lng
-        const crimesWithLatLng = data.map((c) => ({
+        }
+      );
+      if (!res.ok) throw new Error("Failed to fetch crimes");
+      const data = await res.json();
+      setCrimes(
+        data.crimes.map((c) => ({
           ...c,
           lat: c.location?.coordinates?.[1],
           lng: c.location?.coordinates?.[0],
-        }));
-        setCrimes(crimesWithLatLng);
-      } catch (err) {
-        setCrimes([]);
-      }
-    }
-    fetchCrimes();
-  }, [jwt]);
-
-  // Compute hourData and dayData from real crimes
-  const hourData = Array.from({ length: 24 }, (_, i) => ({
-    hour: `${i}:00`,
-    count: 0,
-  }));
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const dayData = dayNames.map((day) => ({ day, count: 0 }));
-  crimes.forEach((c) => {
-    if (c.time) {
-      const d = new Date(c.time);
-      const hour = d.getHours();
-      hourData[hour].count++;
-      const day = d.getDay();
-      dayData[day].count++;
-    }
-  });
-
-  // Filter crimes by type
-  const filteredCrimes =
-    filter === "all"
-      ? crimes
-      : crimes.filter((c) => c.type.toLowerCase() === filter);
-
-  // Handle map click for reporting or route selection
-  const handleMapClick = async (latlng) => {
-    if (!isInBangladeshPolygon(latlng.lat, latlng.lng)) {
-      toast.error("Please select a location within Bangladesh.");
-      return;
-    }
-    if (selectingRoute) {
-      if (routePoints.length === 0) {
-        setRoutePoints([latlng]);
-        // Dismiss source toast, show destination toast
-        if (sourceToastId.current) toast.dismiss(sourceToastId.current);
-        destToastId.current = toast.custom(
-          (t) => (
-            <div
-              className="backdrop-blur-xl bg-white/40 border border-glassyblue-200/40 shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-3 text-glassyblue-800 font-semibold text-base animate-fade-in"
-              style={{
-                boxShadow: "0 8px 32px 0 rgba(31,38,135,0.18)",
-                minWidth: 320,
-              }}
-            >
-              <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
-              Click on the map to select{" "}
-              <span className="font-bold ml-1">destination</span> (red marker).
-            </div>
-          ),
-          { id: "dest-toast", duration: Infinity, position: "top-center" }
-        );
-      } else if (routePoints.length === 1) {
-        setRoutePoints([routePoints[0], latlng]);
-        if (destToastId.current) toast.dismiss(destToastId.current);
-        setRouteLoading(true);
-        setRouteError("");
-        setRoute([]);
-        try {
-          const res = await fetch("/api/routes/safest", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: jwt ? `Bearer ${jwt}` : undefined,
-            },
-            body: JSON.stringify({
-              startLat: routePoints[0].lat,
-              startLng: routePoints[0].lng,
-              endLat: latlng.lat,
-              endLng: latlng.lng,
-              networkType: networkType,
-            }),
-          });
-          if (!res.ok) throw new Error("Failed to fetch route");
-          const data = await res.json();
-          if (data.route && data.route.length > 1) {
-            setRoute(data.route.map((pt) => ({ lat: pt.lat, lng: pt.lng })));
-            setRouteError("");
-          } else {
-            setRoute([]);
-            setRouteError("No safe route found for the selected points.");
-          }
-          setSelectingRoute(false);
-          setShowRouteInstruction(false);
-        } catch (err) {
-          setRouteError("Failed to fetch route");
-        } finally {
-          setRouteLoading(false);
-        }
-      }
+        }))
+      );
+    } catch (err) {
+      console.error("Error fetching crimes:", err);
+      setCrimes([]);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Update crimes when map bounds change
+  const handleBoundsChange = () => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    const newBounds = map.getBounds();
+    setBounds(newBounds);
+    fetchCrimesInBounds(newBounds);
+  };
+
   // Handle filter change
-  const handleFilterChange = (e) => setFilter(e.target.value);
+  const handleFilterChange = (e) => {
+    const newFilter = e.target.value;
+    setFilter(newFilter);
+    if (bounds) {
+      fetchCrimesInBounds(bounds, newFilter);
+    }
+  };
 
   // Handle network type change
   const handleNetworkTypeChange = (e) => setNetworkType(e.target.value);
@@ -261,6 +193,82 @@ const MapPage = () => {
     setMapCenter([place.lat, place.lng]);
     if (mapRef.current) {
       mapRef.current.setView([place.lat, place.lng], 15);
+    }
+  };
+
+  // Handle map click for route selection
+  const handleMapClick = async (latlng) => {
+    if (!isInBangladeshPolygon(latlng.lat, latlng.lng)) {
+      toast.error("Please select a location within Bangladesh.");
+      return;
+    }
+
+    if (selectingRoute) {
+      if (routePoints.length === 0) {
+        // First click - set source point
+        setRoutePoints([latlng]);
+        // Dismiss source toast, show destination toast
+        if (sourceToastId.current) toast.dismiss(sourceToastId.current);
+        destToastId.current = toast.custom(
+          (t) => (
+            <div
+              className="backdrop-blur-xl bg-white/40 border border-glassyblue-200/40 shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-3 text-glassyblue-800 font-semibold text-base animate-fade-in"
+              style={{
+                boxShadow: "0 8px 32px 0 rgba(31,38,135,0.18)",
+                minWidth: 320,
+              }}
+            >
+              <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
+              Click on the map to select{" "}
+              <span className="font-bold ml-1">destination</span> (red marker).
+            </div>
+          ),
+          { id: "dest-toast", duration: Infinity, position: "top-center" }
+        );
+      } else if (routePoints.length === 1) {
+        // Second click - set destination point and calculate route
+        setRoutePoints([routePoints[0], latlng]);
+        if (destToastId.current) toast.dismiss(destToastId.current);
+        setRouteLoading(true);
+        setRouteError("");
+        setRoute([]);
+
+        try {
+          const res = await fetch("/api/routes/safest", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: jwt ? `Bearer ${jwt}` : undefined,
+            },
+            body: JSON.stringify({
+              startLat: routePoints[0].lat,
+              startLng: routePoints[0].lng,
+              endLat: latlng.lat,
+              endLng: latlng.lng,
+              networkType: networkType,
+            }),
+          });
+
+          if (!res.ok) throw new Error("Failed to fetch route");
+          const data = await res.json();
+
+          if (data.route && data.route.length > 1) {
+            setRoute(data.route.map((pt) => ({ lat: pt.lat, lng: pt.lng })));
+            setRouteError("");
+          } else {
+            setRoute([]);
+            setRouteError("No safe route found for the selected points.");
+          }
+
+          setSelectingRoute(false);
+          setShowRouteInstruction(false);
+        } catch (err) {
+          console.error("Route calculation error:", err);
+          setRouteError("Failed to calculate route");
+        } finally {
+          setRouteLoading(false);
+        }
+      }
     }
   };
 
@@ -452,12 +460,25 @@ const MapPage = () => {
           style={{ height: "100%", width: "100%" }}
           ref={mapRef}
           className="z-0"
+          whenReady={(map) => {
+            // Get initial bounds
+            setBounds(map.target.getBounds());
+            fetchCrimesInBounds(map.target.getBounds());
+          }}
+          onMoveEnd={handleBoundsChange}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {filteredCrimes.map((crime) => (
+          {loading && (
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
+              <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg">
+                <span className="text-glassyblue-600">Loading crimes...</span>
+              </div>
+            </div>
+          )}
+          {crimes.map((crime) => (
             <Marker
               key={crime.id}
               position={[crime.lat, crime.lng]}
