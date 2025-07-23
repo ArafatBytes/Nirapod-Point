@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useUser } from "../context/UserContext";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { HeatmapLayer } from "react-leaflet-heatmap-layer-v3";
+import { HeatmapLayerFactory } from "@vgrid/react-leaflet-heatmap-layer";
 import {
   BarChart,
   Bar,
@@ -15,6 +15,9 @@ import {
   Cell,
   Legend,
 } from "recharts";
+
+// Create the HeatmapLayer component from the factory
+const HeatmapLayer = HeatmapLayerFactory();
 
 const crimeTypeColors = {
   murder: "#FF0000",
