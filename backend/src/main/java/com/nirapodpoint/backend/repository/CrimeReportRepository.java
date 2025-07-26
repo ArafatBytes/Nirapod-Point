@@ -8,4 +8,5 @@ import org.springframework.stereotype.Repository;
 public interface CrimeReportRepository extends MongoRepository<CrimeReport, String> {
     // Custom query methods can be added here
     void deleteByReporter(String reporter);
+    long countByReporter(String reporter);
 } 

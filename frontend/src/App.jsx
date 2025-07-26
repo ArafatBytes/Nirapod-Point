@@ -21,6 +21,9 @@ import ReportPage from "./pages/ReportPage";
 import HistoryPage from "./pages/HistoryPage";
 import RiskAnalysisPage from "./pages/RiskAnalysisPage";
 import DebugCrimeRouteDemo from "./pages/DebugCrimeRouteDemo";
+import { ChakraProvider } from "@chakra-ui/react";
+import theme from "./theme/theme";
+import FixedPlugin from "./components/fixedPlugin/FixedPlugin";
 
 const features = [
   {
@@ -34,9 +37,9 @@ const features = [
     icon: "🗺️",
   },
   {
-    title: "AI-Powered Safe Routes",
-    desc: "Get route suggestions that avoid high-risk areas.",
-    icon: "🤖",
+    title: "Smart Route Planning",
+    desc: "Get intelligent route suggestions that automatically find the safest path while avoiding high-risk areas.",
+    icon: "🧭",
   },
   {
     title: "Time-based Risk Analysis",
@@ -51,7 +54,6 @@ function ProtectedRoute({ children, context = "" }) {
   React.useEffect(() => {
     refreshUser && refreshUser();
   }, []);
-  if (loading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
   // Special case for admin page: only check isAdmin
   if (context === "admin" && !(user.admin === true || user.admin === "true")) {
@@ -102,75 +104,262 @@ function ProtectedRoute({ children, context = "" }) {
 
 function Navbar() {
   const { user, logout } = useUser();
+  const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+
+  // Determine which menu is currently selected based on the current path
+  const getSelectedMenu = () => {
+    const path = location.pathname;
+    if (path === "/") return "home";
+    if (path === "/report") return "report";
+    if (path === "/map") return "map";
+    if (path === "/history") return "history";
+    if (path === "/risk") return "risk";
+    if (path === "/account") return "account";
+    if (path === "/admin") return "admin";
+    return "home"; // default to home
+  };
+
+  const selectedMenu = getSelectedMenu();
+
+  // Menu items configuration
+  const menuItems = [
+    { key: "home", label: "Home", path: "/" },
+    { key: "report", label: "Report Crime", path: "/report" },
+    { key: "map", label: "Map", path: "/map" },
+    { key: "history", label: "History", path: "/history" },
+    { key: "risk", label: "Risk Analysis", path: "/risk" },
+  ];
+
+  // Add conditional menu items
+  if (user) {
+    menuItems.push({ key: "account", label: "My Account", path: "/account" });
+  }
+  if (user && user.admin) {
+    menuItems.push({ key: "admin", label: "Admin Panel", path: "/admin" });
+  }
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
   return (
-    <nav className="w-full flex justify-between items-center px-8 py-4 bg-white/70 backdrop-blur-md shadow-md fixed top-0 left-0 z-20">
-      <span className="text-2xl font-bold text-glassyblue-600 tracking-tight">
-        Nirapod Point
-      </span>
-      <div className="space-x-6 hidden md:flex items-center">
-        <Link
-          to="/"
-          className="text-glassyblue-700 hover:text-glassyblue-500 font-medium transition"
-        >
-          Home
-        </Link>
-        <Link
-          to="/report"
-          className="text-glassyblue-700 hover:text-glassyblue-500 font-medium transition"
-        >
-          Report Crime
-        </Link>
-        <Link
-          to="/map"
-          className="text-glassyblue-700 hover:text-glassyblue-500 font-medium transition"
-        >
-          Map
-        </Link>
-        <Link
-          to="/history"
-          className="text-glassyblue-700 hover:text-glassyblue-500 font-medium transition"
-        >
-          History
-        </Link>
-        <Link
-          to="/risk"
-          className="text-glassyblue-700 hover:text-glassyblue-500 font-medium transition"
-        >
-          Risk Analysis
-        </Link>
-        {user && (
-          <Link
-            to="/account"
-            className="text-glassyblue-700 hover:text-glassyblue-500 font-medium transition"
+    <>
+      <nav className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[9999] w-[90%] max-w-6xl">
+        <div className="relative">
+          {/* Glassy blur background */}
+          <div className="absolute inset-0 bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl" />
+
+          {/* Main navbar content */}
+          <div className="relative flex justify-between items-center px-8 py-4">
+            {/* Logo */}
+            <span className="text-2xl font-bold text-black tracking-tight drop-shadow-sm">
+              Nirapod Point
+            </span>
+
+            {/* Desktop Navigation Links */}
+            <div className="hidden md:flex items-center space-x-8 relative">
+              {menuItems.map((item) => (
+                <div key={item.key} className="relative">
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Link
+                      to={item.path}
+                      className="text-black/90 hover:text-black font-medium transition-all duration-200 px-2 py-1"
+                    >
+                      {item.label}
+                    </Link>
+                  </motion.div>
+                  {/* Purple gradient bar positioned at bottom of navbar */}
+                  {selectedMenu === item.key && (
+                    <motion.div
+                      layoutId="navbar-indicator"
+                      className="absolute -bottom-4 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-purple-700 rounded-full"
+                      initial={false}
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 30,
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Auth Button */}
+            <div className="hidden md:flex items-center">
+              {user ? (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={logout}
+                  className="px-6 py-2 rounded-full bg-gradient-to-r from-purple-500 to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 border border-purple-400/30"
+                >
+                  Logout
+                </motion.button>
+              ) : (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <Link
+                    to="/login"
+                    className="px-6 py-2 rounded-full bg-gradient-to-r from-purple-500 to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 border border-purple-400/30"
+                  >
+                    Login
+                  </Link>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Mobile Hamburger Menu */}
+            <div className="md:hidden">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                onClick={toggleMobileMenu}
+                className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-purple-700 border border-purple-400/30 shadow-lg"
+              >
+                <svg
+                  className="w-6 h-6 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                </svg>
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Sidebar */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-[9999] md:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+            onClick={toggleMobileMenu}
+          />
+
+          {/* Sidebar */}
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="absolute right-0 top-0 h-full w-80 bg-white/10 backdrop-blur-xl border-l border-white/20 shadow-2xl"
           >
-            My Account
-          </Link>
-        )}
-        {user && user.admin && (
-          <Link
-            to="/admin"
-            className="text-glassyblue-700 hover:text-glassyblue-500 font-medium transition"
-          >
-            Admin Panel
-          </Link>
-        )}
-        {user ? (
-          <button
-            onClick={logout}
-            className="ml-4 px-4 py-2 rounded-full bg-glassyblue-500 text-black font-semibold shadow hover:bg-glassyblue-600 transition-colors duration-200"
-          >
-            Logout
-          </button>
-        ) : (
-          <Link
-            to="/login"
-            className="ml-4 px-4 py-2 rounded-full bg-glassyblue-500 text-black font-semibold shadow hover:bg-glassyblue-600 transition-colors duration-200"
-          >
-            Login
-          </Link>
-        )}
-      </div>
-    </nav>
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="flex justify-between items-center p-6 border-b border-white/20">
+                <span className="text-xl font-bold text-black">Menu</span>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={toggleMobileMenu}
+                  className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-purple-700 border border-purple-400/30 shadow-lg"
+                >
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </motion.button>
+              </div>
+
+              {/* Menu Items */}
+              <div className="flex-1 p-6 space-y-4">
+                {menuItems.map((item) => (
+                  <div key={item.key} className="relative">
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Link
+                        to={item.path}
+                        onClick={toggleMobileMenu}
+                        className="block text-black/90 hover:text-black font-medium transition-all duration-200 py-3 px-4 rounded-lg hover:bg-black/10"
+                      >
+                        {item.label}
+                      </Link>
+                    </motion.div>
+                    {/* Purple gradient bar for mobile */}
+                    {selectedMenu === item.key && (
+                      <motion.div
+                        layoutId="mobile-navbar-indicator"
+                        className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-500 to-purple-700 rounded-full"
+                        initial={false}
+                        transition={{
+                          type: "spring",
+                          stiffness: 300,
+                          damping: 30,
+                        }}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Auth Button */}
+              <div className="p-6 border-t border-white/20">
+                {user ? (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={() => {
+                      logout();
+                      toggleMobileMenu();
+                    }}
+                    className="w-full px-6 py-3 rounded-full bg-gradient-to-r from-purple-500 to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 border border-purple-400/30"
+                  >
+                    Logout
+                  </motion.button>
+                ) : (
+                  <motion.div
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Link
+                      to="/login"
+                      onClick={toggleMobileMenu}
+                      className="block w-full px-6 py-3 rounded-full bg-gradient-to-r from-purple-500 to-purple-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 border border-purple-400/30 text-center"
+                    >
+                      Login
+                    </Link>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -289,72 +478,137 @@ function GlassyPage({ title }) {
 
 export default function App() {
   return (
-    <UserProvider>
-      <Router>
-        <Toaster position="top-center" />
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/account"
-            element={
-              <ProtectedRoute context="account">
-                <AccountPage />
-              </ProtectedRoute>
-            }
+    <ChakraProvider theme={theme} resetCSS>
+      <UserProvider>
+        <Router>
+          <Toaster
+            position="top-center"
+            toastOptions={{
+              style: {
+                zIndex: 10000,
+                marginTop: "80px",
+                marginLeft: "auto",
+                marginRight: "auto",
+              },
+            }}
           />
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute context="admin">
-                <AdminPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/report"
-            element={
-              <ProtectedRoute context="report">
-                <ReportPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/map"
-            element={
-              <ProtectedRoute context="map">
-                <MapPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/history"
-            element={
-              <ProtectedRoute context="history">
-                <HistoryPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/risk"
-            element={
-              <ProtectedRoute context="risk">
-                <RiskAnalysisPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/debug-crime-route"
-            element={
-              <ProtectedRoute context="debug">
-                <DebugCrimeRouteDemo />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </Router>
-    </UserProvider>
+          <style>
+            {`
+              /* Ensure Leaflet elements don't overlap navbar */
+              .leaflet-popup {
+                z-index: 1000 !important;
+              }
+              .leaflet-control {
+                z-index: 1000 !important;
+              }
+              .leaflet-top,
+              .leaflet-bottom {
+                z-index: 1000 !important;
+              }
+              .leaflet-pane {
+                z-index: 1 !important;
+              }
+              
+              /* Ensure toast messages appear above navbar */
+              .react-hot-toast {
+                z-index: 10000 !important;
+                position: fixed !important;
+                top: 120px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+              }
+              
+              /* Toast container positioning */
+              .react-hot-toast__toast {
+                z-index: 10000 !important;
+                margin-top: 0 !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+              }
+              
+              /* Toast container wrapper */
+              .react-hot-toast__container {
+                z-index: 10000 !important;
+                position: fixed !important;
+                top: 120px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+              }
+              
+              /* Ensure modals appear above navbar but below toast */
+              .chakra-modal__overlay {
+                z-index: 9999 !important;
+              }
+              .chakra-modal__content {
+                z-index: 9999 !important;
+              }
+            `}
+          </style>
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/account"
+              element={
+                <ProtectedRoute context="account">
+                  <AccountPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute context="admin">
+                  <AdminPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/report"
+              element={
+                <ProtectedRoute context="report">
+                  <ReportPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/map"
+              element={
+                <ProtectedRoute context="map">
+                  <MapPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/history"
+              element={
+                <ProtectedRoute context="history">
+                  <HistoryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/risk"
+              element={
+                <ProtectedRoute context="risk">
+                  <RiskAnalysisPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/debug-crime-route"
+              element={
+                <ProtectedRoute context="debug">
+                  <DebugCrimeRouteDemo />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </Router>
+      </UserProvider>
+      <FixedPlugin />
+    </ChakraProvider>
   );
 }

@@ -20,6 +20,7 @@ import java.util.Map;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/users")
@@ -173,6 +174,28 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
+    }
+
+    // User: Get count of crimes reported by the current user
+    @GetMapping("/me/crime-count")
+    public ResponseEntity<?> getMyCrimeCount(@AuthenticationPrincipal User user) {
+        if (user == null) return ResponseEntity.status(401).body("Unauthorized");
+        long count = crimeReportRepository.countByReporter(user.getId());
+        return ResponseEntity.ok(Map.of("count", count));
+    }
+
+    @GetMapping("/crime-counts")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> getAllUserCrimeCounts(@AuthenticationPrincipal User admin) {
+        if (admin == null || !admin.isAdmin()) {
+            return ResponseEntity.status(403).body("Forbidden: Admins only");
+        }
+        List<User> users = userRepository.findAll();
+        Map<String, Long> counts = new HashMap<>();
+        for (User u : users) {
+            counts.put(u.getId(), crimeReportRepository.countByReporter(u.getId()));
+        }
+        return ResponseEntity.ok(counts);
     }
 
     // Admin: Delete user and all their crimes
