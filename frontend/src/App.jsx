@@ -22,8 +22,10 @@ import HistoryPage from "./pages/HistoryPage";
 import RiskAnalysisPage from "./pages/RiskAnalysisPage";
 import DebugCrimeRouteDemo from "./pages/DebugCrimeRouteDemo";
 import { ChakraProvider } from "@chakra-ui/react";
+import { Box, SimpleGrid, Text, useColorModeValue } from "@chakra-ui/react";
 import theme from "./theme/theme";
 import FixedPlugin from "./components/fixedPlugin/FixedPlugin";
+import Card from "./components/card/Card";
 
 const features = [
   {
@@ -107,6 +109,14 @@ function Navbar() {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
+  // Color mode variables for navbar text
+  const navbarTextColor = useColorModeValue("#1a202c", "white");
+  const navbarTextHoverColor = useColorModeValue("#000000", "white");
+  const logoTextColor = useColorModeValue("#000000", "white");
+  const mobileMenuTextColor = useColorModeValue("#1a202c", "white");
+  const mobileMenuTextHoverColor = useColorModeValue("#000000", "white");
+  const mobileMenuHeaderTextColor = useColorModeValue("#000000", "white");
+
   // Determine which menu is currently selected based on the current path
   const getSelectedMenu = () => {
     const path = location.pathname;
@@ -153,7 +163,10 @@ function Navbar() {
           {/* Main navbar content */}
           <div className="relative flex justify-between items-center px-8 py-4">
             {/* Logo */}
-            <span className="text-2xl font-bold text-black tracking-tight drop-shadow-sm">
+            <span
+              className="text-2xl font-bold tracking-tight drop-shadow-sm"
+              style={{ color: logoTextColor }}
+            >
               Nirapod Point
             </span>
 
@@ -168,7 +181,11 @@ function Navbar() {
                   >
                     <Link
                       to={item.path}
-                      className="text-black/90 hover:text-black font-medium transition-all duration-200 px-2 py-1"
+                      className="font-medium transition-all duration-200 px-2 py-1"
+                      style={{
+                        color: navbarTextColor,
+                        ":hover": { color: navbarTextHoverColor },
+                      }}
                     >
                       {item.label}
                     </Link>
@@ -266,7 +283,12 @@ function Navbar() {
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="flex justify-between items-center p-6 border-b border-white/20">
-                <span className="text-xl font-bold text-black">Menu</span>
+                <span
+                  className="text-xl font-bold"
+                  style={{ color: mobileMenuHeaderTextColor }}
+                >
+                  Menu
+                </span>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -302,7 +324,11 @@ function Navbar() {
                       <Link
                         to={item.path}
                         onClick={toggleMobileMenu}
-                        className="block text-black/90 hover:text-black font-medium transition-all duration-200 py-3 px-4 rounded-lg hover:bg-black/10"
+                        className="block font-medium transition-all duration-200 py-3 px-4 rounded-lg hover:bg-black/10"
+                        style={{
+                          color: mobileMenuTextColor,
+                          ":hover": { color: mobileMenuTextHoverColor },
+                        }}
                       >
                         {item.label}
                       </Link>
@@ -385,6 +411,9 @@ function AnimatedBackground() {
 export { AnimatedBackground };
 
 function FeatureCards() {
+  const cardBg = useColorModeValue("white", "#111c44");
+  const borderColor = useColorModeValue("glassyblue-100", "whiteAlpha.300");
+
   return (
     <div
       id="features"
@@ -397,7 +426,11 @@ function FeatureCards() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: i * 0.1 }}
-          className="bg-white/30 backdrop-blur-lg border border-glassyblue-100 rounded-2xl shadow-lg p-6 flex flex-col items-center text-center hover:scale-105 hover:shadow-2xl transition-transform duration-300"
+          className="backdrop-blur-lg border rounded-2xl shadow-lg p-6 flex flex-col items-center text-center hover:scale-105 hover:shadow-2xl transition-transform duration-300"
+          style={{
+            backgroundColor: cardBg,
+            borderColor: borderColor,
+          }}
         >
           <span className="text-4xl mb-2">{f.icon}</span>
           <h3 className="text-xl font-semibold text-glassyblue-700 mb-1">
@@ -411,6 +444,10 @@ function FeatureCards() {
 }
 
 function HomePage() {
+  const cardBg = useColorModeValue("white", "#111c44");
+  const borderColor = useColorModeValue("glassyblue-200/40", "whiteAlpha.300");
+  const buttonTextColor = useColorModeValue("black", "white");
+
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-glassyblue-100 via-white to-glassyblue-200 flex flex-col items-center justify-center pt-24 pb-12 px-2 overflow-x-hidden">
       <AnimatedBackground />
@@ -418,8 +455,12 @@ function HomePage() {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="backdrop-blur-xl bg-white/30 border border-glassyblue-200/40 shadow-2xl rounded-3xl p-10 max-w-2xl w-full mx-4 flex flex-col items-center mt-8"
-        style={{ boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.18)" }}
+        className="backdrop-blur-xl border shadow-2xl rounded-3xl p-10 max-w-2xl w-full mx-4 flex flex-col items-center mt-8"
+        style={{
+          backgroundColor: cardBg,
+          borderColor: borderColor,
+          boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.18)",
+        }}
       >
         <motion.h1
           className="text-4xl md:text-5xl font-extrabold text-glassyblue-700 mb-4 text-center drop-shadow-lg"
@@ -441,7 +482,8 @@ function HomePage() {
           href="#features"
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.97 }}
-          className="px-8 py-3 rounded-full bg-glassyblue-500 text-black font-semibold shadow-lg hover:bg-glassyblue-600 transition-colors duration-200 backdrop-blur-md border border-white/20"
+          className="px-8 py-3 rounded-full bg-glassyblue-500 font-semibold shadow-lg hover:bg-glassyblue-600 transition-colors duration-200 backdrop-blur-md border border-white/20"
+          style={{ color: buttonTextColor }}
         >
           Explore Features
         </motion.a>
@@ -537,10 +579,10 @@ export default function App() {
               
               /* Ensure modals appear above navbar but below toast */
               .chakra-modal__overlay {
-                z-index: 9999 !important;
+                z-index: 10001 !important;
               }
               .chakra-modal__content {
-                z-index: 9999 !important;
+                z-index: 10001 !important;
               }
             `}
           </style>

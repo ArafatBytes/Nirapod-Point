@@ -255,6 +255,7 @@ const MapPage = () => {
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState("");
   const [showRouteInstruction, setShowRouteInstruction] = useState(false);
+  const [routeInstruction, setRouteInstruction] = useState("");
   const [mapCenter, setMapCenter] = useState([23.685, 90.3563]);
   const [searchMode, setSearchMode] = useState("source"); // "source" or "destination"
   const [isMobileLegendOpen, setIsMobileLegendOpen] = useState(false);
@@ -262,9 +263,18 @@ const MapPage = () => {
   const navigate = useNavigate();
   const { jwt } = useUser();
 
-  // Toast refs
-  const sourceToastId = useRef(null);
-  const destToastId = useRef(null);
+  // Dark mode colors
+  const bgColor = useColorModeValue("gray.100", "navy.900");
+  const cardBg = useColorModeValue("white", "navy.700");
+  const textColor = useColorModeValue("secondaryGray.900", "white");
+  const headingColor = useColorModeValue("brand.500", "white");
+  const borderColor = useColorModeValue("secondaryGray.400", "whiteAlpha.300");
+  const selectBg = useColorModeValue("whiteAlpha.800", "navy.800");
+  const mapBg = useColorModeValue("white", "navy.700");
+  const loadingBg = useColorModeValue("whiteAlpha.700", "blackAlpha.700");
+  const legendBg = useColorModeValue("white", "navy.700");
+  const legendTextColor = useColorModeValue("secondaryGray.900", "white");
+  const legendHeadingColor = useColorModeValue("brand.500", "white");
 
   // Function to fetch crimes within current map bounds
   const fetchCrimesInBounds = async (bounds, type = filter) => {
@@ -327,31 +337,13 @@ const MapPage = () => {
   };
 
   const beginSelectingRoute = () => {
-    setRouteModalOpen(false);
     setSelectingRoute(true);
     setRoutePoints([]);
     setRoute([]);
     setRouteError("");
     setShowRouteInstruction(true);
-    // Show glassy toast for source selection
-    if (sourceToastId.current) toast.dismiss(sourceToastId.current);
-    if (destToastId.current) toast.dismiss(destToastId.current);
-    sourceToastId.current = toast.custom(
-      (t) => (
-        <div
-          className="backdrop-blur-xl bg-white/40 border border-glassyblue-200/40 shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-3 text-glassyblue-800 font-semibold text-base animate-fade-in"
-          style={{
-            boxShadow: "0 8px 32px 0 rgba(31,38,135,0.18)",
-            minWidth: 320,
-          }}
-        >
-          <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-2"></span>
-          Click on the map to select{" "}
-          <span className="font-bold ml-1">source</span> (green marker).
-        </div>
-      ),
-      { id: "source-toast", duration: Infinity, position: "top-center" }
-    );
+    setRouteInstruction("Click on the map to select source (green marker).");
+    setRouteModalOpen(false);
   };
 
   const resetRouteSelection = () => {
@@ -361,6 +353,7 @@ const MapPage = () => {
     setRouteModalOpen(false);
     setRouteError("");
     setShowRouteInstruction(false);
+    setRouteInstruction("");
   };
 
   const handleSearch = (place) => {
@@ -381,28 +374,15 @@ const MapPage = () => {
       if (routePoints.length === 0) {
         // First click - set source point
         setRoutePoints([latlng]);
-        // Dismiss source toast, show destination toast
-        if (sourceToastId.current) toast.dismiss(sourceToastId.current);
-        destToastId.current = toast.custom(
-          (t) => (
-            <div
-              className="backdrop-blur-xl bg-white/40 border border-glassyblue-200/40 shadow-2xl rounded-2xl px-6 py-4 flex items-center gap-3 text-glassyblue-800 font-semibold text-base animate-fade-in"
-              style={{
-                boxShadow: "0 8px 32px 0 rgba(31,38,135,0.18)",
-                minWidth: 320,
-              }}
-            >
-              <span className="inline-block w-3 h-3 rounded-full bg-red-500 mr-2"></span>
-              Click on the map to select{" "}
-              <span className="font-bold ml-1">destination</span> (red marker).
-            </div>
-          ),
-          { id: "dest-toast", duration: Infinity, position: "top-center" }
+        // Update instruction to show destination selection
+        setRouteInstruction(
+          "Click on the map to select destination (red marker)."
         );
       } else if (routePoints.length === 1) {
         // Second click - set destination point and calculate route
         setRoutePoints([routePoints[0], latlng]);
-        if (destToastId.current) toast.dismiss(destToastId.current);
+        // Clear instruction as route calculation starts
+        setRouteInstruction("");
         setRouteLoading(true);
         setRouteError("");
         setRoute([]);
@@ -447,14 +427,14 @@ const MapPage = () => {
   };
 
   return (
-    <Box w="full" minH="100vh" bg="gray.100" mt={8}>
+    <Box w="full" minH="100vh" bg={bgColor} mt={8}>
       <Box maxW="7xl" mx="auto" pt={{ base: 24, md: 28 }} pb={6} px={2}>
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
         >
-          <Card p={6} mb={6}>
+          <Card p={6} mb={6} bg={cardBg}>
             <Flex
               direction={{ base: "column", md: "row" }}
               align="center"
@@ -462,7 +442,7 @@ const MapPage = () => {
               gap={6}
             >
               <Flex align="center" gap={4} flex={1}>
-                <Text fontSize="2xl" fontWeight="bold" color="brand.700">
+                <Text fontSize="2xl" fontWeight="bold" color={headingColor}>
                   Bangladesh Crime Map
                 </Text>
                 <Flex align="center" gap={2}>
@@ -474,10 +454,10 @@ const MapPage = () => {
                     onChange={handleFilterChange}
                     w="150px"
                     borderRadius="md"
-                    bg="whiteAlpha.800"
+                    bg={selectBg}
                     fontWeight={500}
                     fontSize="md"
-                    borderColor="secondaryGray.400"
+                    borderColor={borderColor}
                     _focus={{ borderColor: "brand.400" }}
                   >
                     <option value="all">All</option>
@@ -526,64 +506,77 @@ const MapPage = () => {
       </Box>
       {/* Loading overlay for route calculation */}
       {routeLoading && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/60 backdrop-blur-xl"
-          style={{ pointerEvents: "all" }}
+        <Box
+          position="fixed"
+          inset={0}
+          bg={loadingBg}
+          backdropFilter="blur(20px)"
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          zIndex={100}
+          pointerEvents="all"
         >
           <motion.div
-            className="rounded-2xl bg-white/40 shadow-xl p-8 flex flex-col items-center"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.4 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
           >
             <motion.div
-              className="w-16 h-16 mb-4 flex items-center justify-center"
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.4 }}
             >
-              <svg className="w-16 h-16" viewBox="0 0 50 50">
-                <circle
-                  className="text-glassyblue-400 opacity-30"
-                  cx="25"
-                  cy="25"
-                  r="20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="6"
-                />
-                <motion.circle
-                  className="text-glassyblue-600"
-                  cx="25"
-                  cy="25"
-                  r="20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="6"
-                  strokeDasharray="100"
-                  strokeDashoffset="60"
-                  strokeLinecap="round"
-                  animate={{
-                    strokeDashoffset: [60, 0, 60],
-                  }}
+              <Box
+                bg={cardBg}
+                borderRadius="2xl"
+                boxShadow="2xl"
+                p={8}
+                display="flex"
+                flexDirection="column"
+                alignItems="center"
+                border="1px solid"
+                borderColor={borderColor}
+                maxW="md"
+                w="90%"
+              >
+                <motion.div
+                  animate={{ rotate: 360 }}
                   transition={{
                     repeat: Infinity,
                     duration: 1.2,
-                    ease: "easeInOut",
+                    ease: "linear",
                   }}
-                />
-              </svg>
+                  mb={4}
+                >
+                  <Spinner
+                    size="xl"
+                    color="brand.500"
+                    thickness="4px"
+                    speed="0.65s"
+                  />
+                </motion.div>
+                <Text
+                  fontSize="xl"
+                  fontWeight="semibold"
+                  color={textColor}
+                  mb={2}
+                  textAlign="center"
+                >
+                  Calculating safest route...
+                </Text>
+                <Text
+                  color={useColorModeValue("gray.600", "gray.300")}
+                  fontSize="sm"
+                  textAlign="center"
+                >
+                  Please wait while we analyze all possible paths for you.
+                </Text>
+              </Box>
             </motion.div>
-            <div className="text-xl font-semibold text-glassyblue-700 mb-2">
-              Calculating safest route...
-            </div>
-            <div className="text-glassyblue-500 text-sm">
-              Please wait while we analyze all possible paths for you.
-            </div>
           </motion.div>
-        </motion.div>
+        </Box>
       )}
       <Box maxW="7xl" mx="auto" px={2} pb={8}>
         <Flex direction="row" gap={8} align="flex-start">
@@ -628,7 +621,7 @@ const MapPage = () => {
               borderRadius="2xl"
               overflow="hidden"
               boxShadow="xl"
-              bg="white"
+              bg={mapBg}
               minH="600px"
             >
               {/* Crimes loading spinner */}
@@ -642,7 +635,7 @@ const MapPage = () => {
                   align="center"
                   justify="center"
                   zIndex={10}
-                  bg="whiteAlpha.700"
+                  bg={loadingBg}
                 >
                   <Spinner
                     size="xl"
@@ -741,6 +734,55 @@ const MapPage = () => {
                 )}
                 <LocationMarker onSelect={handleMapClick} />
               </MapContainer>
+              {/* Route Selection Instructions - positioned on top of map */}
+              {showRouteInstruction && routeInstruction && (
+                <Box
+                  position="absolute"
+                  top="20px"
+                  left="50%"
+                  transform="translateX(-50%)"
+                  zIndex={1000}
+                  maxW="400px"
+                  w="90%"
+                >
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Box
+                      bg="whiteAlpha.900"
+                      backdropFilter="blur(20px)"
+                      border="1px solid"
+                      borderColor="whiteAlpha.300"
+                      borderRadius="2xl"
+                      px={6}
+                      py={4}
+                      boxShadow="2xl"
+                      textAlign="center"
+                    >
+                      <Flex align="center" justify="center" gap={3}>
+                        <Box
+                          w="3"
+                          h="3"
+                          borderRadius="full"
+                          bg={
+                            routePoints.length === 0 ? "green.500" : "red.500"
+                          }
+                        />
+                        <Text
+                          fontWeight="semibold"
+                          fontSize="md"
+                          color="gray.800"
+                        >
+                          {routeInstruction}
+                        </Text>
+                      </Flex>
+                    </Box>
+                  </motion.div>
+                </Box>
+              )}
             </Box>
           </motion.div>
           {/* Legend Sidebar */}
@@ -761,10 +803,15 @@ const MapPage = () => {
                 alignSelf="flex-start"
                 boxShadow="2xl"
                 borderRadius="2xl"
-                bg="white"
+                bg={legendBg}
                 zIndex={40}
               >
-                <Text fontWeight={700} fontSize="lg" mb={2} color="brand.700">
+                <Text
+                  fontWeight={700}
+                  fontSize="lg"
+                  mb={2}
+                  color={legendHeadingColor}
+                >
                   Marker
                 </Text>
                 <Divider mb={3} />
@@ -776,7 +823,7 @@ const MapPage = () => {
                       width={18}
                       height={30}
                     />
-                    <Text>Source</Text>
+                    <Text color={legendTextColor}>Source</Text>
                   </Flex>
                   <Flex align="center" gap={2}>
                     <img
@@ -785,7 +832,7 @@ const MapPage = () => {
                       width={18}
                       height={30}
                     />
-                    <Text>Destination</Text>
+                    <Text color={legendTextColor}>Destination</Text>
                   </Flex>
                   <Divider />
                   {/* Crime type icons */}
@@ -801,7 +848,13 @@ const MapPage = () => {
                         border="2px solid #fff"
                         boxShadow="md"
                       />
-                      <Text textTransform="capitalize">{type}</Text>
+                      <Text
+                        fontSize="sm"
+                        textTransform="capitalize"
+                        color={legendTextColor}
+                      >
+                        {type}
+                      </Text>
                     </Flex>
                   ))}
                   <Divider />
@@ -810,17 +863,17 @@ const MapPage = () => {
                     fontSize="md"
                     mt={2}
                     mb={1}
-                    color="brand.700"
+                    color={legendHeadingColor}
                   >
                     Route Type
                   </Text>
                   <Flex align="center" gap={2}>
                     <Box w="28px" h="4px" borderRadius="md" bg="#22c55e" />
-                    <Text>Drive</Text>
+                    <Text color={legendTextColor}>Drive</Text>
                   </Flex>
                   <Flex align="center" gap={2}>
                     <Box w="28px" h="4px" borderRadius="md" bg="purple.500" />
-                    <Text>Walk</Text>
+                    <Text color={legendTextColor}>Walk</Text>
                   </Flex>
                 </Flex>
               </Card>
@@ -830,10 +883,18 @@ const MapPage = () => {
 
         {/* Mobile Legend Sidebar */}
         {isMobileLegendOpen && (
-          <div className="fixed inset-0 z-[9999] md:hidden">
+          <Box
+            position="fixed"
+            inset={0}
+            zIndex={9999}
+            display={{ base: "block", md: "none" }}
+          >
             {/* Backdrop */}
-            <div
-              className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+            <Box
+              position="absolute"
+              inset={0}
+              bg="blackAlpha.200"
+              backdropFilter="blur(4px)"
               onClick={() => setIsMobileLegendOpen(false)}
             />
 
@@ -843,143 +904,270 @@ const MapPage = () => {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="absolute right-0 top-0 h-full w-80 bg-white/95 backdrop-blur-xl border-l border-white/20 shadow-2xl"
             >
-              <div className="flex flex-col h-full">
-                {/* Header */}
-                <div className="flex justify-between items-center p-6 border-b border-white/20">
-                  <span className="text-xl font-bold text-black">Marker</span>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    onClick={() => setIsMobileLegendOpen(false)}
-                    className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-purple-700 border border-purple-400/30 shadow-lg"
+              <Box
+                position="absolute"
+                right={0}
+                top={0}
+                h="full"
+                w="320px"
+                bg={useColorModeValue("whiteAlpha.950", "gray.800")}
+                backdropFilter="blur(20px)"
+                borderLeft="1px solid"
+                borderColor={useColorModeValue(
+                  "whiteAlpha.200",
+                  "whiteAlpha.300"
+                )}
+                boxShadow="2xl"
+              >
+                <Flex direction="column" h="full">
+                  {/* Header */}
+                  <Flex
+                    justify="space-between"
+                    align="center"
+                    p={6}
+                    borderBottom="1px solid"
+                    borderColor={useColorModeValue(
+                      "whiteAlpha.200",
+                      "whiteAlpha.300"
+                    )}
                   >
-                    <svg
-                      className="w-5 h-5 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                    <Text fontSize="xl" fontWeight="bold" color={textColor}>
+                      Marker
+                    </Text>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ duration: 0.2 }}
+                      onClick={() => setIsMobileLegendOpen(false)}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </motion.button>
-                </div>
-
-                {/* Legend Content */}
-                <div className="flex-1 p-6 space-y-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-black mb-3">Point</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png"
-                          alt="Source"
-                          width={18}
-                          height={30}
-                        />
-                        <span className="text-black">Source</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <img
-                          src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png"
-                          alt="Destination"
-                          width={18}
-                          height={30}
-                        />
-                        <span className="text-black">Destination</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-gray-200 pt-4">
-                    <h3 className="text-lg font-bold text-black mb-3">
-                      Crime Types
-                    </h3>
-                    <div className="space-y-3">
-                      {Object.entries(crimeTypeColors).map(([type, color]) => (
-                        <div key={type} className="flex items-center gap-3">
-                          <div
-                            className="w-4 h-4 rounded-full border-2 border-white shadow-md"
-                            style={{ backgroundColor: color }}
+                      <Box
+                        p={2}
+                        borderRadius="lg"
+                        bgGradient="linear(to-r, purple.500, purple.700)"
+                        border="1px solid"
+                        borderColor="purple.400"
+                        boxShadow="lg"
+                      >
+                        <Icon
+                          as="svg"
+                          w={5}
+                          h={5}
+                          color="white"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
                           />
-                          <span className="text-black capitalize">{type}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                        </Icon>
+                      </Box>
+                    </motion.button>
+                  </Flex>
 
-                  <div className="border-t border-gray-200 pt-4">
-                    <h3 className="text-lg font-bold text-black mb-3">
-                      Route Type
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-1 rounded bg-green-500" />
-                        <span className="text-black">Drive</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-1 rounded bg-purple-500" />
-                        <span className="text-black">Walk</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  {/* Legend Content */}
+                  <Box flex={1} p={6} spacing={4}>
+                    <Box>
+                      <Text
+                        fontSize="lg"
+                        fontWeight="bold"
+                        color={legendHeadingColor}
+                        mb={3}
+                      >
+                        Point
+                      </Text>
+                      <Flex direction="column" gap={3}>
+                        <Flex align="center" gap={3}>
+                          <img
+                            src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png"
+                            alt="Source"
+                            width={18}
+                            height={30}
+                          />
+                          <Text color={legendTextColor}>Source</Text>
+                        </Flex>
+                        <Flex align="center" gap={3}>
+                          <img
+                            src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png"
+                            alt="Destination"
+                            width={18}
+                            height={30}
+                          />
+                          <Text color={legendTextColor}>Destination</Text>
+                        </Flex>
+                      </Flex>
+                    </Box>
+
+                    <Divider my={4} borderColor={borderColor} />
+
+                    <Box>
+                      <Text
+                        fontSize="lg"
+                        fontWeight="bold"
+                        color={legendHeadingColor}
+                        mb={3}
+                      >
+                        Crime Types
+                      </Text>
+                      <Flex direction="column" gap={3}>
+                        {Object.entries(crimeTypeColors).map(
+                          ([type, color]) => (
+                            <Flex key={type} align="center" gap={3}>
+                              <Box
+                                w="16px"
+                                h="16px"
+                                borderRadius="full"
+                                bg={color}
+                                border="2px solid"
+                                borderColor={useColorModeValue(
+                                  "white",
+                                  "whiteAlpha.200"
+                                )}
+                                boxShadow="md"
+                              />
+                              <Text
+                                color={legendTextColor}
+                                textTransform="capitalize"
+                              >
+                                {type}
+                              </Text>
+                            </Flex>
+                          )
+                        )}
+                      </Flex>
+                    </Box>
+
+                    <Divider my={4} borderColor={borderColor} />
+
+                    <Box>
+                      <Text
+                        fontSize="lg"
+                        fontWeight="bold"
+                        color={legendHeadingColor}
+                        mb={3}
+                      >
+                        Route Type
+                      </Text>
+                      <Flex direction="column" gap={3}>
+                        <Flex align="center" gap={3}>
+                          <Box
+                            w="28px"
+                            h="4px"
+                            borderRadius="md"
+                            bg="green.500"
+                          />
+                          <Text color={legendTextColor}>Drive</Text>
+                        </Flex>
+                        <Flex align="center" gap={3}>
+                          <Box
+                            w="28px"
+                            h="4px"
+                            borderRadius="md"
+                            bg="purple.500"
+                          />
+                          <Text color={legendTextColor}>Walk</Text>
+                        </Flex>
+                      </Flex>
+                    </Box>
+                  </Box>
+                </Flex>
+              </Box>
             </motion.div>
-          </div>
+          </Box>
         )}
       </Box>
       {/* Safest Route Modal - moved outside MapContainer for z-index fix */}
       {routeModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-lg max-w-md w-full p-6 relative">
-            <h2 className="text-xl font-bold mb-4">Find Safest Route</h2>
-            <label className="block mb-2 font-medium">Route Type:</label>
-            <select
+        <Box
+          position="fixed"
+          inset={0}
+          bg="blackAlpha.600"
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+          zIndex={50}
+        >
+          <Box
+            bg={cardBg}
+            borderRadius="2xl"
+            boxShadow="2xl"
+            maxW="md"
+            w="full"
+            p={6}
+            position="relative"
+            border="1px solid"
+            borderColor={borderColor}
+          >
+            <Text fontSize="xl" fontWeight="bold" mb={4} color={textColor}>
+              Find Safest Route
+            </Text>
+            <Text mb={2} fontWeight="medium" color={textColor}>
+              Route Type:
+            </Text>
+            <Select
               value={networkType}
               onChange={handleNetworkTypeChange}
-              className="border rounded px-2 py-1 mb-4 w-full"
+              mb={4}
+              w="full"
+              borderRadius="md"
+              bg={selectBg}
+              borderColor={borderColor}
+              color={textColor}
+              _focus={{ borderColor: "brand.400" }}
             >
               <option value="drive">Drive</option>
               <option value="walk">Walk</option>
-            </select>
-            <div className="mb-4">
-              <p className="mb-1">Instructions:</p>
-              <ul className="list-disc list-inside text-sm text-gray-700">
-                <li>
+            </Select>
+            <Box mb={4}>
+              <Text mb={1} color={textColor}>
+                Instructions:
+              </Text>
+              <Box as="ul" listStyleType="disc" pl={6} fontSize="sm">
+                <Box as="li" color={textColor} mb={1}>
                   After clicking 'Start Selecting', click on the map to select{" "}
-                  <span className="font-semibold">source</span> (green marker).
-                </li>
-                <li>
+                  <Text as="span" fontWeight="semibold">
+                    source
+                  </Text>{" "}
+                  (green marker).
+                </Box>
+                <Box as="li" color={textColor}>
                   Then click to select{" "}
-                  <span className="font-semibold">destination</span> (red
-                  marker).
-                </li>
-              </ul>
-            </div>
-            <div className="flex flex-row justify-end gap-2">
-              <button
+                  <Text as="span" fontWeight="semibold">
+                    destination
+                  </Text>{" "}
+                  (red marker).
+                </Box>
+              </Box>
+            </Box>
+            <Flex justify="flex-end" gap={2}>
+              <Button
                 onClick={resetRouteSelection}
-                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 font-semibold"
+                colorScheme="gray"
+                variant="outline"
+                borderRadius="md"
+                fontWeight="semibold"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={beginSelectingRoute}
-                className="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 text-white font-semibold"
+                bgGradient="linear(to-r, #7551FF, #422AFB)"
+                color="white"
+                borderRadius="md"
+                fontWeight="semibold"
+                _hover={{
+                  bgGradient: "linear(to-r, #422AFB, #7551FF)",
+                }}
               >
                 Start Selecting
-              </button>
-            </div>
-          </div>
-        </div>
+              </Button>
+            </Flex>
+          </Box>
+        </Box>
       )}
       {/* Floating instruction while selecting route */}
       {/* (Removed, replaced by hot toasts) */}

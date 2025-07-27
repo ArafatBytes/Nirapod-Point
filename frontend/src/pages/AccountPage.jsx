@@ -8,6 +8,7 @@ import bannerImg from "../assets/img/auth/banner.png";
 import { Box, Flex, Spinner, Button } from "@chakra-ui/react";
 import { CheckIcon } from "@chakra-ui/icons";
 import FixedPlugin from "../components/fixedPlugin/FixedPlugin";
+import { useColorModeValue } from "@chakra-ui/react";
 
 export default function AccountPage() {
   const { user, refreshUser } = useUser();
@@ -29,6 +30,19 @@ export default function AccountPage() {
   const [photoHover, setPhotoHover] = useState(false);
   const [crimeCount, setCrimeCount] = useState(0);
   const [crimeCountLoading, setCrimeCountLoading] = useState(true);
+
+  // Dark mode colors for cards
+  const cardBg = useColorModeValue("white", "#111c44");
+  const borderColor = useColorModeValue("glassyblue-200/40", "whiteAlpha.300");
+  // Dark mode colors for input fields
+  const inputBg = useColorModeValue("white/60", "navy.700");
+  const inputBorderColor = useColorModeValue(
+    "glassyblue-200",
+    "whiteAlpha.300"
+  );
+  const inputTextColor = useColorModeValue("gray.700", "white");
+  const labelTextColor = useColorModeValue("glassyblue-700", "white");
+  const placeholderColor = useColorModeValue("gray.500", "whiteAlpha.600");
 
   useEffect(() => {
     if (user) {
@@ -220,8 +234,12 @@ export default function AccountPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
             onSubmit={handleSubmit}
-            className="backdrop-blur-xl bg-white/30 border border-glassyblue-200/40 shadow-2xl rounded-3xl p-8 w-full flex flex-col gap-4 mt-8"
-            style={{ boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.18)" }}
+            className="backdrop-blur-xl border shadow-2xl rounded-3xl p-8 w-full flex flex-col gap-4 mt-8"
+            style={{
+              backgroundColor: cardBg,
+              borderColor: borderColor,
+              boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.18)",
+            }}
           >
             <div className="flex flex-col items-center gap-2 mb-2">
               <div
@@ -325,35 +343,65 @@ export default function AccountPage() {
                 </div>
               </div>
             )}
-            <h2 className="text-2xl md:text-3xl font-bold text-glassyblue-700 mb-2 text-center">
+            <h2
+              className="text-2xl md:text-3xl font-bold mb-2 text-center"
+              style={{ color: labelTextColor }}
+            >
               My Account
             </h2>
             <div className="flex flex-col gap-2">
-              <label className="font-medium text-glassyblue-700">Name</label>
+              <label className="font-medium" style={{ color: labelTextColor }}>
+                Name
+              </label>
               <input
                 name="name"
                 value={form.name}
                 onChange={handleChange}
-                className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
+                className="rounded-lg border p-2 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
+                style={{
+                  backgroundColor: inputBg,
+                  borderColor: inputBorderColor,
+                  color: inputTextColor,
+                }}
+                placeholder="Enter your name"
+                _placeholder={{ color: placeholderColor }}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label className="font-medium text-glassyblue-700">Email</label>
+              <label className="font-medium" style={{ color: labelTextColor }}>
+                Email
+              </label>
               <input
                 name="email"
                 type="email"
                 value={form.email}
                 onChange={handleChange}
-                className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
+                className="rounded-lg border p-2 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
+                style={{
+                  backgroundColor: inputBg,
+                  borderColor: inputBorderColor,
+                  color: inputTextColor,
+                }}
+                placeholder="Enter your email"
+                _placeholder={{ color: placeholderColor }}
               />
             </div>
             <div className="flex flex-col gap-2">
-              <label className="font-medium text-glassyblue-700">Phone</label>
+              <label className="font-medium" style={{ color: labelTextColor }}>
+                Phone
+              </label>
               <input
                 name="phone"
                 value={form.phone}
                 onChange={handleChange}
-                className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
+                className="rounded-lg border p-2 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
+                style={{
+                  backgroundColor: inputBg,
+                  borderColor: inputBorderColor,
+                  color: inputTextColor,
+                }}
+                placeholder="Enter your phone number"
+                _placeholder={{ color: placeholderColor }}
               />
             </div>
             {error && (
@@ -433,10 +481,17 @@ export default function AccountPage() {
                 setPwLoading(false);
               }
             }}
-            className="backdrop-blur-xl bg-white/30 border border-glassyblue-200/40 shadow-2xl rounded-3xl p-8 w-full flex flex-col gap-4 mt-8"
-            style={{ boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.18)" }}
+            className="backdrop-blur-xl border shadow-2xl rounded-3xl p-8 w-full flex flex-col gap-4 mt-8"
+            style={{
+              backgroundColor: cardBg,
+              borderColor: borderColor,
+              boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.18)",
+            }}
           >
-            <h3 className="text-xl font-bold text-glassyblue-700 mb-2 text-center">
+            <h3
+              className="text-xl font-bold mb-2 text-center"
+              style={{ color: labelTextColor }}
+            >
               Change Password
             </h3>
             <input
@@ -444,21 +499,39 @@ export default function AccountPage() {
               value={pwCurrent}
               onChange={(e) => setPwCurrent(e.target.value)}
               placeholder="Current password"
-              className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
+              className="rounded-lg border p-2 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
+              style={{
+                backgroundColor: inputBg,
+                borderColor: inputBorderColor,
+                color: inputTextColor,
+              }}
+              _placeholder={{ color: placeholderColor }}
             />
             <input
               type="password"
               value={pwNew}
               onChange={(e) => setPwNew(e.target.value)}
               placeholder="New password"
-              className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
+              className="rounded-lg border p-2 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
+              style={{
+                backgroundColor: inputBg,
+                borderColor: inputBorderColor,
+                color: inputTextColor,
+              }}
+              _placeholder={{ color: placeholderColor }}
             />
             <input
               type="password"
               value={pwConfirm}
               onChange={(e) => setPwConfirm(e.target.value)}
               placeholder="Confirm new password"
-              className="rounded-lg border border-glassyblue-200 p-2 bg-white/60 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
+              className="rounded-lg border p-2 focus:outline-none focus:ring-2 focus:ring-glassyblue-400"
+              style={{
+                backgroundColor: inputBg,
+                borderColor: inputBorderColor,
+                color: inputTextColor,
+              }}
+              _placeholder={{ color: placeholderColor }}
             />
             {pwError && (
               <div className="text-red-500 text-center font-medium">

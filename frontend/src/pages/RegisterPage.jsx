@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useUser } from "../context/UserContext";
 import { useNavigate } from "react-router-dom";
@@ -103,17 +103,34 @@ export default function RegisterPage() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const videoRef = useRef();
   const canvasRef = useRef();
+  const [cameraStream, setCameraStream] = useState(null);
+
+  // Handle video stream when modal opens
+  useEffect(() => {
+    if (showCamera && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.onloadedmetadata = () => {
+        videoRef.current.play();
+      };
+    }
+  }, [showCamera, cameraStream]);
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user",
+        },
+      });
+
+      // Store the stream and set the modal
+      setCameraStream(stream);
       setShowCamera(true);
     } catch (err) {
       console.error("Error accessing camera:", err);
-      toast.error("Could not access camera");
+      toast.error("Could not access camera. Please check permissions.");
     }
   };
 
@@ -138,6 +155,11 @@ export default function RegisterPage() {
       if (stream) {
         stream.getTracks().forEach((track) => track.stop());
       }
+      // Also stop the stored stream
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+        setCameraStream(null);
+      }
       setShowCamera(false);
     }
   };
@@ -146,6 +168,11 @@ export default function RegisterPage() {
     if (videoRef.current && videoRef.current.srcObject) {
       const stream = videoRef.current.srcObject;
       stream.getTracks().forEach((track) => track.stop());
+    }
+    // Also stop the stored stream
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
     }
     setShowCamera(false);
   };
@@ -611,60 +638,107 @@ export default function RegisterPage() {
                 </motion.div>
 
                 {showCamera && (
-                  <Modal isOpen={showCamera} onClose={cancelCamera} isCentered>
-                    <ModalOverlay backdropFilter="blur(6px)" />
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ duration: 0.3 }}
+                  <>
+                    <Box
+                      position="fixed"
+                      top={0}
+                      left={0}
+                      right={0}
+                      bottom={0}
+                      bg="blackAlpha.600"
+                      zIndex={10001}
+                      onClick={cancelCamera}
+                    />
+                    <Box
+                      position="fixed"
+                      top="50%"
+                      left="50%"
+                      transform="translate(-50%, -50%)"
+                      zIndex={10002}
                     >
-                      <ModalContent maxW="xs">
-                        <ModalHeader>Take a Photo</ModalHeader>
-                        <ModalCloseButton />
-                        <ModalBody
-                          display="flex"
-                          flexDirection="column"
-                          alignItems="center"
-                          justifyContent="center"
-                          p={6}
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <Box
+                          maxW="xs"
+                          bg="white"
+                          borderRadius="xl"
+                          boxShadow="2xl"
+                          overflow="hidden"
                         >
-                          <video
-                            ref={videoRef}
-                            style={{
-                              width: 320,
-                              height: 240,
-                              borderRadius: 12,
-                              background: "#222",
-                            }}
-                            autoPlay
-                          />
-                          <canvas ref={canvasRef} style={{ display: "none" }} />
-                          <Flex gap={4} mt={2}>
-                            <motion.div
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
+                          <Flex
+                            justify="space-between"
+                            align="center"
+                            p={4}
+                            borderBottom="1px"
+                            borderColor="gray.200"
+                          >
+                            <Text fontWeight="bold" fontSize="lg">
+                              Take a Photo
+                            </Text>
+                            <Button
+                              onClick={cancelCamera}
+                              variant="ghost"
+                              size="sm"
+                              borderRadius="full"
+                              _hover={{ bg: "gray.100" }}
                             >
-                              <Button
-                                colorScheme="green"
-                                onClick={capturePhoto}
-                              >
-                                Capture
-                              </Button>
-                            </motion.div>
-                            <motion.div
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              <Button colorScheme="red" onClick={cancelCamera}>
-                                Cancel
-                              </Button>
-                            </motion.div>
+                              ✕
+                            </Button>
                           </Flex>
-                        </ModalBody>
-                      </ModalContent>
-                    </motion.div>
-                  </Modal>
+                          <Box
+                            display="flex"
+                            flexDirection="column"
+                            alignItems="center"
+                            justifyContent="center"
+                            p={6}
+                          >
+                            <video
+                              ref={videoRef}
+                              style={{
+                                width: 320,
+                                height: 240,
+                                borderRadius: 12,
+                                background: "#222",
+                              }}
+                              autoPlay
+                            />
+                            <canvas
+                              ref={canvasRef}
+                              style={{ display: "none" }}
+                            />
+                            <Flex gap={4} mt={2}>
+                              <motion.div
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                <Button
+                                  colorScheme="green"
+                                  onClick={capturePhoto}
+                                >
+                                  Capture
+                                </Button>
+                              </motion.div>
+                              <motion.div
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                <Button
+                                  colorScheme="red"
+                                  onClick={cancelCamera}
+                                >
+                                  Cancel
+                                </Button>
+                              </motion.div>
+                            </Flex>
+                          </Box>
+                        </Box>
+                      </motion.div>
+                    </Box>
+                  </>
                 )}
 
                 <motion.div

@@ -47,6 +47,11 @@ export default function AdminPage() {
   const [approveAllLoading, setApproveAllLoading] = useState(false);
   const [userCrimeCounts, setUserCrimeCounts] = useState({});
   const textColor = useColorModeValue("secondaryGray.900", "white");
+  // Dark mode colors for modals
+  const modalBg = useColorModeValue("whiteAlpha.900", "navy.800");
+  const modalBorderColor = useColorModeValue("gray.200", "whiteAlpha.300");
+  const modalTextColor = useColorModeValue("gray.600", "gray.300");
+  const modalHeadingColor = useColorModeValue("secondaryGray.900", "white");
 
   useEffect(() => {
     if (!user || !user.admin) return;
@@ -478,126 +483,196 @@ export default function AdminPage() {
           </SimpleGrid>
         )}
       </motion.div>
-      {/* Modal for NID/profile image */}
-      <Modal
-        isOpen={!!modalImg}
-        onClose={() => {
-          setModalImg(null);
-          onClose();
-        }}
-        size="xl"
-        isCentered
-      >
-        <ModalOverlay backdropFilter="blur(6px)" bg="blackAlpha.600" />
-        <ModalContent
-          bg="whiteAlpha.900"
-          borderRadius="2xl"
-          boxShadow="2xl"
-          maxW="90vw"
-        >
-          <ModalHeader>{modalImg?.alt}</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            justifyContent="center"
-            p={6}
+      {/* Photo Modal */}
+      {modalImg && (
+        <>
+          <Box
+            position="fixed"
+            top={0}
+            left={0}
+            right={0}
+            bottom={0}
+            bg="blackAlpha.600"
+            zIndex={10001}
+            onClick={() => setModalImg(null)}
+          />
+          <Box
+            position="fixed"
+            top="50%"
+            left="50%"
+            transform="translate(-50%, -50%)"
+            zIndex={10002}
           >
-            {modalImg && (
-              <Image
-                src={modalImg.src}
-                alt={modalImg.alt}
-                maxW="80vw"
-                maxH="70vh"
-                borderRadius="xl"
-                borderWidth={4}
-                borderColor="purple.300"
-                boxShadow="xl"
-                objectFit="contain"
-              />
-            )}
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-      <Modal
-        isOpen={!!userToDelete}
-        onClose={() => setUserToDelete(null)}
-        isCentered
-      >
-        <ModalOverlay backdropFilter="blur(6px)" bg="blackAlpha.600" />
-        <ModalContent
-          bg="whiteAlpha.900"
-          borderRadius="2xl"
-          boxShadow="2xl"
-          maxW="sm"
-        >
-          <ModalHeader>Confirm Deletion</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            justifyContent="center"
-            p={6}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Box position="relative">
+                <Button
+                  position="absolute"
+                  top={2}
+                  right={2}
+                  onClick={() => setModalImg(null)}
+                  color="white"
+                  bg="blackAlpha.600"
+                  _hover={{ bg: "blackAlpha.700" }}
+                  borderRadius="full"
+                  zIndex={10003}
+                  size="sm"
+                  minW="40px"
+                  h="40px"
+                >
+                  ✕
+                </Button>
+                <Image
+                  src={modalImg?.src}
+                  alt={modalImg?.alt || "Full size"}
+                  maxH="90vh"
+                  maxW="90vw"
+                  objectFit="contain"
+                  borderRadius="lg"
+                  boxShadow="2xl"
+                />
+              </Box>
+            </motion.div>
+          </Box>
+        </>
+      )}
+      {userToDelete && (
+        <>
+          <Box
+            position="fixed"
+            top={0}
+            left={0}
+            right={0}
+            bottom={0}
+            bg="blackAlpha.600"
+            zIndex={10001}
+            onClick={() => setUserToDelete(null)}
+          />
+          <Box
+            position="fixed"
+            top="50%"
+            left="50%"
+            transform="translate(-50%, -50%)"
+            zIndex={10002}
           >
-            <Text fontSize="lg" color="red.600" fontWeight="bold" mb={2}>
-              Are you sure you want to delete user '{userToDelete?.name}' and
-              all their crime reports?
-            </Text>
-            <Text color="gray.600" mb={4} textAlign="center">
-              This action cannot be undone.
-            </Text>
-            <Flex gap={4} mt={2}>
-              <Button
-                onClick={() => setUserToDelete(null)}
-                colorScheme="gray"
-                variant="outline"
-                rounded="full"
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Box
+                bg={modalBg}
+                borderRadius="2xl"
+                boxShadow="2xl"
+                maxW="sm"
+                overflow="hidden"
+                border="1px"
+                borderColor={modalBorderColor}
               >
-                Cancel
-              </Button>
-              <Button
-                colorScheme="red"
-                rounded="full"
-                isLoading={actionLoading === userToDelete?.id + "delete"}
-                loadingText="Deleting..."
-                onClick={async () => {
-                  setActionLoading(userToDelete.id + "delete");
-                  setError("");
-                  try {
-                    const res = await fetch(`/api/users/${userToDelete.id}`, {
-                      method: "DELETE",
-                      headers: { Authorization: `Bearer ${jwt}` },
-                    });
-                    if (!res.ok) throw new Error(await res.text());
-                    const data = await res.json();
-                    toast.success(
-                      data.message ||
-                        `Deleted user '${userToDelete.name}' and their crimes.`
-                    );
-                    setUserToDelete(null);
-                    fetchUsers();
-                  } catch (err) {
-                    toast.error(
-                      err.message ||
-                        `Failed to delete user '${userToDelete.name}'.`
-                    );
-                    setError(
-                      err.message ||
-                        `Failed to delete user '${userToDelete.name}'.`
-                    );
-                  } finally {
-                    setActionLoading("");
-                  }
-                }}
-              >
-                Confirm Delete
-              </Button>
-            </Flex>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+                <Flex
+                  justify="space-between"
+                  align="center"
+                  p={4}
+                  borderBottom="1px"
+                  borderColor={modalBorderColor}
+                >
+                  <Text
+                    fontWeight="bold"
+                    fontSize="lg"
+                    color={modalHeadingColor}
+                  >
+                    Confirm Deletion
+                  </Text>
+                  <Button
+                    onClick={() => setUserToDelete(null)}
+                    variant="ghost"
+                    size="sm"
+                    borderRadius="full"
+                    _hover={{ bg: "gray.100" }}
+                  >
+                    ✕
+                  </Button>
+                </Flex>
+                <Box
+                  display="flex"
+                  flexDirection="column"
+                  alignItems="center"
+                  justifyContent="center"
+                  p={6}
+                >
+                  <Text
+                    fontSize="lg"
+                    fontWeight="bold"
+                    mb={2}
+                    color={modalHeadingColor}
+                  >
+                    Are you sure you want to delete user '{userToDelete?.name}'
+                    and all their crime reports?
+                  </Text>
+                  <Text color={modalTextColor} mb={4} textAlign="center">
+                    This action cannot be undone.
+                  </Text>
+                  <Flex gap={4} mt={2}>
+                    <Button
+                      onClick={() => setUserToDelete(null)}
+                      colorScheme="gray"
+                      variant="outline"
+                      rounded="full"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      colorScheme="red"
+                      rounded="full"
+                      isLoading={actionLoading === userToDelete?.id + "delete"}
+                      loadingText="Deleting..."
+                      onClick={async () => {
+                        setActionLoading(userToDelete.id + "delete");
+                        setError("");
+                        try {
+                          const res = await fetch(
+                            `/api/users/${userToDelete.id}`,
+                            {
+                              method: "DELETE",
+                              headers: { Authorization: `Bearer ${jwt}` },
+                            }
+                          );
+                          if (!res.ok) throw new Error(await res.text());
+                          const data = await res.json();
+                          toast.success(
+                            data.message ||
+                              `Deleted user '${userToDelete.name}' and their crimes.`
+                          );
+                          setUserToDelete(null);
+                          fetchUsers();
+                        } catch (err) {
+                          toast.error(
+                            err.message ||
+                              `Failed to delete user '${userToDelete.name}'.`
+                          );
+                          setError(
+                            err.message ||
+                              `Failed to delete user '${userToDelete.name}'.`
+                          );
+                        } finally {
+                          setActionLoading("");
+                        }
+                      }}
+                    >
+                      Confirm Delete
+                    </Button>
+                  </Flex>
+                </Box>
+              </Box>
+            </motion.div>
+          </Box>
+        </>
+      )}
       <FixedPlugin />
     </Box>
   );
