@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useUser } from "../context/UserContext";
 import { motion, vh } from "framer-motion";
 import toast from "react-hot-toast";
@@ -30,6 +30,7 @@ export default function AccountPage() {
   const [photoHover, setPhotoHover] = useState(false);
   const [crimeCount, setCrimeCount] = useState(0);
   const [crimeCountLoading, setCrimeCountLoading] = useState(true);
+  const [hasFetchedCrimeCount, setHasFetchedCrimeCount] = useState(false);
 
   // Dark mode colors for cards
   const cardBg = useColorModeValue("white", "#111c44");
@@ -54,25 +55,33 @@ export default function AccountPage() {
     }
   }, [user]);
 
-  useEffect(() => {
-    async function fetchCrimeCount() {
-      if (!user) return;
-      setCrimeCountLoading(true);
-      try {
-        const res = await fetch("/api/users/me/crime-count", {
-          headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` },
-        });
-        if (!res.ok) throw new Error("Failed to fetch crime count");
-        const data = await res.json();
-        setCrimeCount(data.count || 0);
-      } catch {
-        setCrimeCount(0);
-      } finally {
-        setCrimeCountLoading(false);
-      }
+  // Memoized fetch crime count function
+  const fetchCrimeCount = useCallback(async () => {
+    if (!user?.id || hasFetchedCrimeCount) return;
+
+    setCrimeCountLoading(true);
+    try {
+      const res = await fetch("/api/users/me/crime-count", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("jwt")}` },
+      });
+      if (!res.ok) throw new Error("Failed to fetch crime count");
+      const data = await res.json();
+      setCrimeCount(data.count || 0);
+      setHasFetchedCrimeCount(true);
+    } catch {
+      setCrimeCount(0);
+      setHasFetchedCrimeCount(true);
+    } finally {
+      setCrimeCountLoading(false);
     }
-    fetchCrimeCount();
-  }, [user]);
+  }, [user?.id, hasFetchedCrimeCount]);
+
+  // Only fetch crime count once when user ID is available
+  useEffect(() => {
+    if (user?.id && !hasFetchedCrimeCount) {
+      fetchCrimeCount();
+    }
+  }, [user?.id, hasFetchedCrimeCount, fetchCrimeCount]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
